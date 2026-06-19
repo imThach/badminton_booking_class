@@ -6,16 +6,20 @@ const getSender = () =>
     `Badminton Booking <${process.env.EMAIL_USERNAME || process.env.EMAIL_USER}>`;
 
 const sendEmail = async ({ email, subject, message, html }) => {
-    const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+    const host = process.env.EMAIL_HOST || 'smtp-relay.brevo.com'; 
     const addressFamily = Number(process.env.EMAIL_ADDRESS_FAMILY || 4);
+
     const resolvedHost =
         addressFamily === 4 && process.env.EMAIL_RESOLVE_IPV4 === 'true'
             ? (await dns.resolve4(host))[0]
             : host;
-    const port = Number(process.env.EMAIL_PORT || 465);
-    const secure = process.env.EMAIL_SECURE
+
+    const port = Number(process.env.EMAIL_PORT || 2525);
+
+    const secure = process.env.EMAIL_SECURE !== undefined
         ? String(process.env.EMAIL_SECURE) === 'true'
         : port === 465;
+
     const user = process.env.EMAIL_USERNAME || process.env.EMAIL_USER;
     const pass = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
 
