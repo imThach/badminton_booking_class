@@ -1,7 +1,7 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 
-const PORT = process.env.PORT || 5000;
-const SERVER_URL = process.env.SERVER_URL || `http://localhost:${PORT}`;
+const SERVER_URL = process.env.SERVER_URL?.replace(/\/$/, '');
+const API_SERVER_URL = SERVER_URL ? `${SERVER_URL}/api/v1` : '/api/v1';
 
 const classSchema = {
     type: 'object',
@@ -55,8 +55,8 @@ const options = {
         },
         servers: [
             {
-                url: `${SERVER_URL}/api/v1`,
-                description: 'Local API server',
+                url: API_SERVER_URL,
+                description: SERVER_URL ? 'Configured API server' : 'Current API server',
             },
         ],
         tags: [
