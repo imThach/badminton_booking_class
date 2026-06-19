@@ -1,10 +1,17 @@
 const nodemailer = require('nodemailer');
 const dns = require('dns').promises;
 
+const getSender = () =>
+    process.env.EMAIL_FROM ||
+    `Badminton Booking <${process.env.EMAIL_USERNAME || process.env.EMAIL_USER}>`;
+
 const sendEmail = async ({ email, subject, message, html }) => {
     const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
     const addressFamily = Number(process.env.EMAIL_ADDRESS_FAMILY || 4);
-    const resolvedHost = addressFamily === 4 ? (await dns.resolve4(host))[0] : host;
+    const resolvedHost =
+        addressFamily === 4 && process.env.EMAIL_RESOLVE_IPV4 === 'true'
+            ? (await dns.resolve4(host))[0]
+            : host;
     const port = Number(process.env.EMAIL_PORT || 465);
     const secure = process.env.EMAIL_SECURE
         ? String(process.env.EMAIL_SECURE) === 'true'
@@ -23,16 +30,17 @@ const sendEmail = async ({ email, subject, message, html }) => {
         connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
         greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
         socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
+        requireTLS: String(process.env.EMAIL_REQUIRE_TLS || 'false') === 'true',
         family: addressFamily,
+        logger: String(process.env.EMAIL_DEBUG || 'false') === 'true',
+        debug: String(process.env.EMAIL_DEBUG || 'false') === 'true',
         tls: {
             servername: host,
         },
     });
 
-    const sender = process.env.EMAIL_FROM || `Badminton Booking <${user}>`;
-
     const info = await transporter.sendMail({
-        from: sender,
+        from: getSender(),
         to: email,
         subject,
         text: message,
