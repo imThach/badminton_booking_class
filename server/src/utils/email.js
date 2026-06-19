@@ -20,6 +20,7 @@ const sendEmail = async ({ email, subject, message, html }) => {
         connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
         greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
         socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
+        family: Number(process.env.EMAIL_ADDRESS_FAMILY || 4),
         tls: {
             servername: host,
         },
