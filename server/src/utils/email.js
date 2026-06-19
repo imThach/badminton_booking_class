@@ -1,7 +1,10 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns').promises;
 
 const sendEmail = async ({ email, subject, message, html }) => {
     const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+    const addressFamily = Number(process.env.EMAIL_ADDRESS_FAMILY || 4);
+    const resolvedHost = addressFamily === 4 ? (await dns.resolve4(host))[0] : host;
     const port = Number(process.env.EMAIL_PORT || 465);
     const secure = process.env.EMAIL_SECURE
         ? String(process.env.EMAIL_SECURE) === 'true'
@@ -10,7 +13,7 @@ const sendEmail = async ({ email, subject, message, html }) => {
     const pass = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
 
     const transporter = nodemailer.createTransport({
-        host,
+        host: resolvedHost,
         port,
         secure,
         auth: {
@@ -20,7 +23,7 @@ const sendEmail = async ({ email, subject, message, html }) => {
         connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
         greetingTimeout: Number(process.env.EMAIL_GREETING_TIMEOUT_MS || 10000),
         socketTimeout: Number(process.env.EMAIL_SOCKET_TIMEOUT_MS || 20000),
-        family: Number(process.env.EMAIL_ADDRESS_FAMILY || 4),
+        family: addressFamily,
         tls: {
             servername: host,
         },
