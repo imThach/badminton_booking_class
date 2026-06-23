@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Logo from '../common/logo.jsx';
-import { IoPerson } from "react-icons/io5";
+import { IoIosPerson } from "react-icons/io";
 import Button from '../common/Button';
 import { useAuth } from '../../auth/AuthProvider.jsx';
 
@@ -30,7 +30,7 @@ export default function Header() {
     }, []);
 
     return (
-        < header className = "bg-surface bg-white shadow-sm sticky top-0 z-50" >
+        < header className="bg-surface bg-white shadow-sm sticky top-0 z-50" >
             <div className="flex justify-between items-center w-full px-lg py-md max-w-container-max mx-auto h-20">
 
                 {/* Logo */}
@@ -55,7 +55,7 @@ export default function Header() {
                                 className="flex items-center gap-sm border border-outline-variant hover:bg-surface-container-low transition-colors rounded-full px-sm py-xs focus:outline-none"
                             >
                                 <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
-                                    <IoPerson className="text-on-surface-variant" />
+                                    <IoIosPerson className="text-on-surface-variant" size={20} />
                                 </div>
                                 <div className="hidden sm:block text-right pr-xs">
                                     <p className="text-label-sm font-bold text-on-surface">
@@ -67,8 +67,8 @@ export default function Header() {
                             {/* Dropdown Menu */}
                             <div
                                 className={`absolute top-full right-0 mt-2 w-48 bg-white border border-outline-variant/50 rounded-xl shadow-lg overflow-hidden transition-all duration-200 origin-top-right z-50 ${isDropdownOpen
-                                        ? "transform opacity-100 scale-100 visible"
-                                        : "transform opacity-0 scale-95 invisible"
+                                    ? "transform opacity-100 scale-100 visible"
+                                    : "transform opacity-0 scale-95 invisible"
                                     }`}
                             >
                                 <div className="p-xs">
