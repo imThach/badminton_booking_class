@@ -1,7 +1,6 @@
-import Icon from '../../components/common/Icon.jsx';
 import { MdOutlinePerson } from "react-icons/md";
 import { MdOutlineSchedule } from "react-icons/md";
-import { IoLocationOutline } from "react-icons/io";
+import { IoLocationOutline } from "react-icons/io5";
 
 export default function ClassCard({ item, onView, actionSlot }) {
     // Map dữ liệu từ Backend API (hoặc mock data)
