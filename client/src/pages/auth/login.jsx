@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import GoogleIcon from "../../components/common/googleicon.jsx";
@@ -15,9 +15,11 @@ export default function LoginPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const fromLocation = location.state?.from;
-    const from = fromLocation
+    const fromPath = fromLocation
         ? `${fromLocation.pathname}${fromLocation.search || ""}${fromLocation.hash || ""}`
         : "/";
+    const authRoutes = new Set(["/login", "/register", "/verify-otp"]);
+    const from = authRoutes.has(fromLocation?.pathname) ? "/" : fromPath;
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -172,9 +174,9 @@ export default function LoginPage() {
 
                         <p className="mt-xl text-center text-body-md text-on-surface-variant">
                             Don&apos;t have an account?{" "}
-                            <a className="font-bold text-primary hover:underline" href="/register">
+                            <Link className="font-bold text-primary hover:underline" to="/register">
                                 Sign up
-                            </a>
+                            </Link>
                         </p>
                     </div>
                 </section>

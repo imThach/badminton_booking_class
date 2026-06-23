@@ -32,10 +32,13 @@ export function AuthProvider({ children }) {
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: () => {
+    onMutate: () => {
+      queryClient.removeQueries({ queryKey: ["authUser"], exact: true });
+    },
+    onSuccess: (loginResponse) => {
       localStorage.setItem(AUTH_SESSION_KEY, "true");
+      queryClient.setQueryData(["authUser"], loginResponse);
       setHasAuthSession(true);
-      queryClient.invalidateQueries({ queryKey: ["authUser"] });
       toast.success("Login successful!");
     },
     onError: (error) => {
@@ -48,7 +51,7 @@ export function AuthProvider({ children }) {
     onSettled: () => {
       localStorage.removeItem(AUTH_SESSION_KEY);
       setHasAuthSession(false);
-      queryClient.setQueryData(["authUser"], null);
+      queryClient.clear();
     },
   });
 
