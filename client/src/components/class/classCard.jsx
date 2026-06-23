@@ -1,6 +1,4 @@
-import { MdOutlinePerson } from "react-icons/md";
-import { MdOutlineSchedule } from "react-icons/md";
-import { IoLocationOutline } from "react-icons/io5";
+import { Clock, MapPin, User } from "lucide-react";
 
 export default function ClassCard({ item, onView, actionSlot }) {
     // Map dữ liệu từ Backend API (hoặc mock data)
@@ -37,9 +35,9 @@ export default function ClassCard({ item, onView, actionSlot }) {
 
                 {/* Info List */}
                 <div className="space-y-sm mb-lg text-label-sm text-on-surface-variant">
-                    <div className="flex items-center gap-sm"><MdOutlinePerson size={18} className="opacity-75" /><span>{coach}</span></div>
-                    <div className="flex items-center gap-sm"><MdOutlineSchedule size={18} className="opacity-75" /><span>{item.schedule}</span></div>
-                    <div className="flex items-center gap-sm"><IoLocationOutline size={18} className="opacity-75" /><span>{item.location}</span></div>
+                    <div className="flex items-center gap-sm"><User size={18} className="opacity-75" /><span>{coach}</span></div>
+                    <div className="flex items-center gap-sm"><Clock size={18} className="opacity-75" /><span>{item.schedule}</span></div>
+                    <div className="flex items-center gap-sm"><MapPin size={18} className="opacity-75" /><span>{item.location}</span></div>
                 </div>
 
                 {/* Capacity & Action */}

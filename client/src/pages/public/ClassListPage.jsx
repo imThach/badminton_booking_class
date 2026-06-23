@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { classApi } from "../../api/classApi.js";
+import { ChevronDown, Search } from "lucide-react";
+import { classesApi } from "../../api/classesApi.js";
 import ClassCard from "../../components/class/classCard.jsx";
-import { IoIosSearch } from "react-icons/io";
-import { IoIosArrowDown } from "react-icons/io";
 
 function ClassCardSkeleton() {
     return (
@@ -30,15 +29,30 @@ function ClassCardSkeleton() {
     );
 }
 
+function useDebouncedValue(value, delayMs = 350) {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            setDebouncedValue(value);
+        }, delayMs);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [value, delayMs]);
+
+    return debouncedValue;
+}
+
 export default function ClassListPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [level, setLevel] = useState("");
+    const debouncedSearchTerm = useDebouncedValue(searchTerm);
     const navigate = useNavigate();
 
     // Gọi API lấy dữ liệu thực tế từ Backend
     const { data: classesResponse, isLoading, isError } = useQuery({
-        queryKey: ["classes", searchTerm, level],
-        queryFn: () => classApi.getAllClasses({ name: searchTerm, level }),
+        queryKey: ["classes", debouncedSearchTerm, level],
+        queryFn: () => classesApi.list({ name: debouncedSearchTerm, level }),
         staleTime: 5000,
     });
 
@@ -59,7 +73,7 @@ export default function ClassListPage() {
                     <div className="flex flex-col sm:flex-row gap-sm">
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-md flex items-center pointer-events-none text-on-surface-variant">
-                                <IoIosSearch />
+                                <Search size={18} />
                             </div>
                             <input
                                 type="text"
@@ -83,7 +97,7 @@ export default function ClassListPage() {
                             </select>
 
                             <div className="absolute inset-y-0 right-0 flex items-center pr-md pointer-events-none">
-                                <IoIosArrowDown className="text-on-surface-variant" />
+                                <ChevronDown className="text-on-surface-variant" size={18} />
                             </div>
                         </div>
                     </div>

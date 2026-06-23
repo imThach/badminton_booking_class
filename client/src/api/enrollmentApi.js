@@ -9,4 +9,8 @@ export const enrollmentApi = {
         const response = await api.delete(`/enrollments/classes/${classId}`);
         return response.data;
     },
+    enrollClass: async (classId) => {
+        const response = await api.post(`/enrollments/classes/${classId}`);
+        return response.data;
+    },
 };

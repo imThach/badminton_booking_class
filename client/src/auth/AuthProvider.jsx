@@ -1,29 +1,40 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { authApi } from "../api/authApi.js";
-import { tokenStorage } from "../api/tokenStorage.js";
 import toast from "react-hot-toast";
+import { authApi } from "../api/authApi.js";
 
 const AuthContext = createContext(null);
+const AUTH_SESSION_KEY = "badminton_booking_has_auth_session";
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
+  const [hasAuthSession, setHasAuthSession] = useState(
+    () => localStorage.getItem(AUTH_SESSION_KEY) === "true"
+  );
 
-  // Fetching User Profile nếu có token
-  const { data: userResponse, isLoading: isLoadingUser } = useQuery({
+  const { data: userResponse, isError: isUserError, isLoading: isLoadingUser } = useQuery({
     queryKey: ["authUser"],
     queryFn: authApi.getMe,
-    retry: false, // Bị lỗi (401) thì không thử lại
-    refetchOnWindowFocus: false, // Tránh call /me liên tục khi chuyển tab
+    enabled: hasAuthSession,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (isUserError) {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      setHasAuthSession(false);
+    }
+  }, [isUserError]);
 
   const user = userResponse?.data?.user || null;
   const isAuthenticated = !!user;
 
-  // Xử lý Login Mutation
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (data) => {
+    onSuccess: () => {
+      localStorage.setItem(AUTH_SESSION_KEY, "true");
+      setHasAuthSession(true);
       queryClient.invalidateQueries({ queryKey: ["authUser"] });
       toast.success("Login successful!");
     },
@@ -35,12 +46,23 @@ export function AuthProvider({ children }) {
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
     onSettled: () => {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      setHasAuthSession(false);
       queryClient.setQueryData(["authUser"], null);
-    }
+    },
   });
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoadingUser, login: loginMutation.mutateAsync, isLoggingIn: loginMutation.isPending, logout: logoutMutation.mutate }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoadingUser: hasAuthSession && isLoadingUser,
+        login: loginMutation.mutateAsync,
+        isLoggingIn: loginMutation.isPending,
+        logout: logoutMutation.mutate,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

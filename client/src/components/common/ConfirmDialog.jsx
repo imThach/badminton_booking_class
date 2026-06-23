@@ -37,7 +37,7 @@ export default function ConfirmDialog({
                         {cancelLabel}
                     </Button>
                     <Button
-                        className="w-full px-md py-sm sm:w-auto"
+                        className="w-full px-md text-white py-sm sm:w-auto"
                         disabled={isLoading}
                         onClick={onConfirm}
                         type="button"

@@ -1,8 +1,12 @@
 import { api } from './axiosClient';
 
 export const classesApi = {
-  async list() {
-    const response = await api.get('/classes');
+  async list(params) {
+    const response = await api.get('/classes', { params });
+    return response.data;
+  },
+  async getById(id) {
+    const response = await api.get(`/classes/${id}`);
     return response.data;
   },
   async create(payload) {

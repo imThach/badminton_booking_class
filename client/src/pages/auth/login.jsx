@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import GoogleIcon from "../../components/common/googleicon.jsx";
@@ -12,14 +12,19 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
 
     const { login, isLoggingIn } = useAuth();
+    const location = useLocation();
     const navigate = useNavigate();
+    const fromLocation = location.state?.from;
+    const from = fromLocation
+        ? `${fromLocation.pathname}${fromLocation.search || ""}${fromLocation.hash || ""}`
+        : "/";
 
     const handleSubmit = async (event) => {
         event.preventDefault();
 
         try {
             await login({ email, password });
-            navigate("/");
+            navigate(from, { replace: true });
         } catch (error) {
             console.error("Login Error:", error);
         }
@@ -93,9 +98,9 @@ export default function LoginPage() {
                                     <label className="block text-label-sm text-on-surface-variant" htmlFor="password">
                                         Password
                                     </label>
-                                    <a className="text-label-sm font-semibold text-primary transition-all hover:underline" href="#">
+                                    {/* <a className="text-label-sm font-semibold text-primary transition-all hover:underline" href="#">
                                         Forgot password?
-                                    </a>
+                                    </a> */}
                                 </div>
 
                                 <div className="relative">
@@ -155,6 +160,7 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
+                            {/* incoming... */}
                             <button
                                 className="flex h-12 w-full items-center justify-center gap-sm rounded-xl border border-outline-variant bg-surface-container-lowest px-md font-bold text-on-surface transition-all duration-200 hover:bg-surface-container-low active:scale-[0.98]"
                                 type="button"

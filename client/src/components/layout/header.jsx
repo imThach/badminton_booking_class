@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Logo from '../common/logo.jsx';
-import { IoIosPerson } from "react-icons/io";
+import { User } from "lucide-react";
 import Button from '../common/Button';
 import { useAuth } from '../../auth/AuthProvider.jsx';
 
@@ -55,7 +55,7 @@ export default function Header() {
                                 className="flex items-center gap-sm border border-outline-variant hover:bg-surface-container-low transition-colors rounded-full px-sm py-xs focus:outline-none"
                             >
                                 <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
-                                    <IoIosPerson className="text-on-surface-variant" size={20} />
+                                    <User className="text-on-surface-variant" size={20} />
                                 </div>
                                 <div className="hidden sm:block text-right pr-xs">
                                     <p className="text-label-sm font-bold text-on-surface">

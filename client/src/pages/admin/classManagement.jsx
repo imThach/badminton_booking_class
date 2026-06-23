@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, Users, Pencil, Trash2, X, UserMinus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { classesApi } from "../../api/classesApi";
+import ClassFormModal from "../../components/admin/ClassFormModal.jsx";
+import ClassManagementTable from "../../components/admin/ClassManagementTable.jsx";
+import StudentsModal from "../../components/admin/StudentsModal.jsx";
 import Button from "../../components/common/Button";
 import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
 import Header from "../../components/layout/header.jsx";
@@ -35,172 +38,6 @@ const toClassForm = (classItem) => ({
     maxStudents: classItem.maxStudents || "",
 });
 
-function ClassFormModal({
-    title,
-    description,
-    form,
-    isSaving,
-    submitLabel,
-    onChange,
-    onClose,
-    onSubmit,
-}) {
-    const inputClassName =
-        "mt-xs w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
-    const labelClassName = "text-label-sm font-semibold text-on-surface";
-
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-md py-lg backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="class-form-title"
-        >
-            <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
-                <div className="flex items-start justify-between gap-md border-b border-outline-variant px-lg py-md">
-                    <div>
-                        <p className="text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                            Admin
-                        </p>
-                        <h2 id="class-form-title" className="mt-xs text-headline-lg font-semibold text-on-surface">
-                            {title}
-                        </h2>
-                        <p className="mt-xs text-body-md text-on-surface-variant">{description}</p>
-                    </div>
-                    <button
-                        className="rounded-full p-sm text-on-surface-variant transition-colors hover:bg-surface-container-high"
-                        onClick={onClose}
-                        type="button"
-                        aria-label="Close class form modal"
-                    >
-                        <X size={22} />
-                    </button>
-                </div>
-
-                <form className="space-y-lg px-lg py-lg" onSubmit={onSubmit}>
-                    <div className="grid gap-md sm:grid-cols-2">
-                        <label className="sm:col-span-2">
-                            <span className={labelClassName}>Class title</span>
-                            <input
-                                className={inputClassName}
-                                name="title"
-                                onChange={onChange}
-                                placeholder="Morning Badminton Basics"
-                                required
-                                value={form.title}
-                            />
-                        </label>
-
-                        <label>
-                            <span className={labelClassName}>Coach</span>
-                            <input
-                                className={inputClassName}
-                                name="coachName"
-                                onChange={onChange}
-                                placeholder="Nguyen Van A"
-                                required
-                                value={form.coachName}
-                            />
-                        </label>
-
-                        <label>
-                            <span className={labelClassName}>Level</span>
-                            <select
-                                className={inputClassName}
-                                name="level"
-                                onChange={onChange}
-                                required
-                                value={form.level}
-                            >
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                            </select>
-                        </label>
-
-                        <label>
-                            <span className={labelClassName}>Start date</span>
-                            <input
-                                className={inputClassName}
-                                name="startDate"
-                                onChange={onChange}
-                                required
-                                type="date"
-                                value={form.startDate}
-                            />
-                        </label>
-
-                        <label>
-                            <span className={labelClassName}>Max students</span>
-                            <input
-                                className={inputClassName}
-                                min="1"
-                                name="maxStudents"
-                                onChange={onChange}
-                                placeholder="16"
-                                required
-                                type="number"
-                                value={form.maxStudents}
-                            />
-                        </label>
-
-                        <label>
-                            <span className={labelClassName}>Schedule</span>
-                            <input
-                                className={inputClassName}
-                                name="schedule"
-                                onChange={onChange}
-                                placeholder="Mon/Wed/Fri 6-7pm"
-                                required
-                                value={form.schedule}
-                            />
-                        </label>
-
-                        <label>
-                            <span className={labelClassName}>Location</span>
-                            <input
-                                className={inputClassName}
-                                name="location"
-                                onChange={onChange}
-                                placeholder="Court 1, District 1"
-                                required
-                                value={form.location}
-                            />
-                        </label>
-
-                        <label className="sm:col-span-2">
-                            <span className={labelClassName}>Description</span>
-                            <textarea
-                                className={`${inputClassName} min-h-28 resize-y`}
-                                name="description"
-                                onChange={onChange}
-                                placeholder="Describe the focus, goals, and requirements for this class."
-                                required
-                                value={form.description}
-                            />
-                        </label>
-                    </div>
-
-                    <div className="flex flex-col-reverse gap-sm border-t border-outline-variant pt-md sm:flex-row sm:justify-end">
-                        <Button
-                            className="px-md py-sm"
-                            disabled={isSaving}
-                            onClick={onClose}
-                            type="button"
-                            variant="secondary"
-                        >
-                            Cancel
-                        </Button>
-                        <Button className="px-md py-sm" disabled={isSaving} type="submit">
-                            {isSaving ? "Saving..." : submitLabel}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
-
 export default function ClassManagement() {
     const queryClient = useQueryClient();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -211,7 +48,7 @@ export default function ClassManagement() {
 
     const { data, isError, isLoading } = useQuery({
         queryKey: ["admin", "classes"],
-        queryFn: classesApi.list,
+        queryFn: () => classesApi.list(),
     });
 
     const selectedClassId = studentsClass?._id || studentsClass?.id;
@@ -401,105 +238,15 @@ export default function ClassManagement() {
                     </div>
 
                     <div className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm">
-                        {isLoading && (
-                            <div className="flex items-center justify-center py-xl">
-                                <span className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                            </div>
-                        )}
-
-                        {isError && (
-                            <div className="py-xl text-center font-bold text-error">
-                                Failed to load classes.
-                            </div>
-                        )}
-
-                        {!isLoading && !isError && classes.length === 0 && (
-                            <div className="py-xl text-center text-on-surface-variant">
-                                No classes found.
-                            </div>
-                        )}
-
-                        {!isLoading && !isError && classes.length > 0 && (
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-left">
-                                    <thead>
-                                        <tr className="border-b border-outline-variant bg-surface-container">
-                                            <th className="px-lg py-md text-label-sm text-on-surface-variant">Class</th>
-                                            <th className="px-lg py-md text-label-sm text-on-surface-variant">Coach</th>
-                                            <th className="px-lg py-md text-label-sm text-on-surface-variant">Schedule</th>
-                                            <th className="px-lg py-md text-label-sm text-on-surface-variant">Enrollment</th>
-                                            <th className="px-lg py-md text-label-sm text-on-surface-variant">Status</th>
-                                            <th className="px-lg py-md text-right text-label-sm text-on-surface-variant">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-outline-variant">
-                                        {classes.map((item) => {
-                                            const id = item._id || item.id;
-                                            const enrolled = item.currentStudents || 0;
-                                            const capacity = item.maxStudents || 0;
-                                            const percent = capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0;
-                                            const full = capacity > 0 && enrolled >= capacity;
-
-                                            return (
-                                                <tr key={id} className="transition-colors hover:bg-surface-container-low">
-                                                    <td className="px-lg py-md">
-                                                        <p className="font-semibold text-on-surface">{item.title}</p>
-                                                        <p className="text-label-xs uppercase text-on-surface-variant">{item.level}</p>
-                                                    </td>
-                                                    <td className="px-lg py-md text-on-surface-variant">{item.coachName}</td>
-                                                    <td className="px-lg py-md text-on-surface-variant">{item.schedule}</td>
-                                                    <td className="px-lg py-md">
-                                                        <div className="flex items-center gap-md">
-                                                            <div className="h-2 w-24 overflow-hidden rounded-full bg-surface-container-high">
-                                                                <div
-                                                                    className={`${full ? "bg-error" : "bg-primary"} h-full`}
-                                                                    style={{ width: `${percent}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-label-sm text-on-surface-variant">
-                                                                {enrolled}/{capacity}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-lg py-md">
-                                                        <span className={`${full ? "bg-error-container text-on-error-container" : "bg-surface-container text-primary"} rounded-full px-md py-xs text-label-xs font-bold uppercase`}>
-                                                            {full ? "Full" : "Active"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-lg py-md text-right">
-                                                        <button
-                                                            className="rounded-full p-sm text-primary hover:bg-primary-container/10"
-                                                            onClick={() => setStudentsClass(item)}
-                                                            type="button"
-                                                            aria-label={`View students for ${item.title}`}
-                                                        >
-                                                            <Users size={18} />
-                                                        </button>
-                                                        <button
-                                                            className="ml-xs rounded-full p-sm text-on-surface-variant hover:bg-surface-container-high"
-                                                            onClick={() => handleEditClass(item)}
-                                                            type="button"
-                                                            aria-label={`Edit ${item.title}`}
-                                                        >
-                                                            <Pencil size={18} />
-                                                        </button>
-                                                        <button
-                                                            className="ml-xs rounded-full p-sm text-error hover:bg-error-container disabled:cursor-not-allowed disabled:opacity-50"
-                                                            disabled={deleteMutation.isPending}
-                                                            onClick={() => handleDeleteClass(item)}
-                                                            type="button"
-                                                            aria-label={`Delete ${item.title}`}
-                                                        >
-                                                            <Trash2 size={20} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                        <ClassManagementTable
+                            classes={classes}
+                            isDeleting={deleteMutation.isPending}
+                            isError={isError}
+                            isLoading={isLoading}
+                            onDelete={handleDeleteClass}
+                            onEdit={handleEditClass}
+                            onViewStudents={setStudentsClass}
+                        />
                     </div>
                 </section>
             </main>
@@ -530,99 +277,16 @@ export default function ClassManagement() {
                 />
             )}
 
-            {studentsClass && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-md py-lg backdrop-blur-sm"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="students-modal-title"
-                >
-                    <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
-                        <div className="flex items-start justify-between gap-md border-b border-outline-variant px-lg py-md">
-                            <div>
-                                <p className="text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                                    Students
-                                </p>
-                                <h2 id="students-modal-title" className="mt-xs text-headline-lg font-semibold text-on-surface">
-                                    {studentsClass.title}
-                                </h2>
-                                <p className="mt-xs text-body-md text-on-surface-variant">
-                                    {students.length} / {studentsData?.data?.class?.maxStudents || studentsClass.maxStudents || 0} enrolled
-                                </p>
-                            </div>
-                            <button
-                                className="rounded-full p-sm text-on-surface-variant transition-colors hover:bg-surface-container-high"
-                                onClick={() => setStudentsClass(null)}
-                                type="button"
-                                aria-label="Close students modal"
-                            >
-                                <X size={22} />
-                            </button>
-                        </div>
-
-                        <div className="max-h-[65vh] overflow-y-auto px-lg py-lg">
-                            {isStudentsLoading && (
-                                <div className="flex items-center justify-center py-xl">
-                                    <span className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                                </div>
-                            )}
-
-                            {isStudentsError && (
-                                <div className="rounded-lg bg-error-container px-md py-lg text-center font-semibold text-on-error-container">
-                                    Failed to load students.
-                                </div>
-                            )}
-
-                            {!isStudentsLoading && !isStudentsError && students.length === 0 && (
-                                <div className="rounded-lg border border-outline-variant bg-surface-container-low px-md py-lg text-center text-on-surface-variant">
-                                    No students enrolled in this class yet.
-                                </div>
-                            )}
-
-                            {!isStudentsLoading && !isStudentsError && students.length > 0 && (
-                                <div className="overflow-x-auto rounded-lg border border-outline-variant">
-                                    <table className="w-full border-collapse text-left">
-                                        <thead>
-                                            <tr className="border-b border-outline-variant bg-surface-container">
-                                                <th className="px-md py-sm text-label-sm text-on-surface-variant">Student</th>
-                                                <th className="px-md py-sm text-label-sm text-on-surface-variant">Email</th>
-                                                <th className="px-md py-sm text-label-sm text-on-surface-variant">Enrolled At</th>
-                                                <th className="px-md py-sm text-right text-label-sm text-on-surface-variant">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-outline-variant">
-                                            {students.map((student) => (
-                                                <tr key={student.enrollmentId}>
-                                                    <td className="px-md py-sm font-semibold text-on-surface">
-                                                        {student.user?.name || "Unknown"}
-                                                    </td>
-                                                    <td className="px-md py-sm text-on-surface-variant">
-                                                        {student.user?.email || "-"}
-                                                    </td>
-                                                    <td className="px-md py-sm text-on-surface-variant">
-                                                        {student.enrolledAt ? new Date(student.enrolledAt).toLocaleString() : "-"}
-                                                    </td>
-                                                    <td className="px-md py-sm text-right">
-                                                        <button
-                                                            className="rounded-full p-sm text-error hover:bg-error-container disabled:cursor-not-allowed disabled:opacity-50"
-                                                            disabled={removeStudentMutation.isPending}
-                                                            onClick={() => handleRemoveStudent(student)}
-                                                            type="button"
-                                                            aria-label={`Remove ${student.user?.name || "student"}`}
-                                                        >
-                                                            <UserMinus size={18} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <StudentsModal
+                classItem={studentsClass}
+                isError={isStudentsError}
+                isLoading={isStudentsLoading}
+                isRemoving={removeStudentMutation.isPending}
+                students={students}
+                studentsData={studentsData}
+                onClose={() => setStudentsClass(null)}
+                onRemoveStudent={handleRemoveStudent}
+            />
 
             <ConfirmDialog
                 isOpen={!!confirm}

@@ -25,7 +25,7 @@ export default function MyClassesPage() {
     };
 
     return (
-        <div className="flex min-h-screen flex-col bg-surface bg-white"> 
+        <div className="flex min-h-screen flex-col bg-surface bg-white">
             <Header />
             <main className="mx-auto w-full max-w-container-max flex-grow px-lg py-xl">
                 <section className="space-y-xl">
