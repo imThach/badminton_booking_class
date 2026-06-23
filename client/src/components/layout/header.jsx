@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Logo from '../common/logo.jsx';
 import { IoPerson } from "react-icons/io5";
 import Button from '../common/Button';
@@ -11,6 +11,7 @@ const navLinkClass = ({ isActive }) => isActive
 
 export default function Header() {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const isAdmin = user?.role === 'admin';
 
     // State và Ref cho Dropdown
@@ -81,7 +82,9 @@ export default function Header() {
                                     <button
                                         onClick={() => {
                                             setIsDropdownOpen(false);
-                                            logout();
+                                            logout(undefined, {
+                                                onSettled: () => navigate('/login', { replace: true }),
+                                            });
                                         }}
                                         className="w-full text-left px-md py-sm text-body-md text-error hover:bg-error-container/50 rounded-lg transition-colors font-medium mt-xs"
                                     >

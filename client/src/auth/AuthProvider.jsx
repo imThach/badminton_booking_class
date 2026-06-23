@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
 
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.setQueryData(["authUser"], null);
     }
   });

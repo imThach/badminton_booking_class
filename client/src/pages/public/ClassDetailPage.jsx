@@ -7,12 +7,72 @@ import Header from "../../components/layout/header.jsx";
 import Footer from "../../components/layout/footer.jsx";
 import Icon from "../../components/common/Icon.jsx";
 import Button from "../../components/common/Button.jsx";
+import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
+import { useState } from "react";
+
+function ClassDetailSkeleton() {
+    return (
+        <main className="max-w-container-max mx-auto px-lg py-xl flex-grow w-full">
+            <section className="mb-xl h-[400px] overflow-hidden rounded-xl bg-surface-container-high md:h-[500px]">
+                <div className="flex h-full animate-pulse flex-col justify-end p-lg md:p-xl">
+                    <div className="mb-sm flex gap-sm">
+                        <div className="h-7 w-24 rounded-full bg-surface-container-lowest/70" />
+                        <div className="h-7 w-32 rounded-full bg-surface-container-lowest/70" />
+                    </div>
+                    <div className="mb-md h-12 w-3/4 max-w-2xl rounded bg-surface-container-lowest/70" />
+                    <div className="flex flex-wrap gap-md">
+                        <div className="h-5 w-36 rounded bg-surface-container-lowest/60" />
+                        <div className="h-5 w-44 rounded bg-surface-container-lowest/60" />
+                    </div>
+                </div>
+            </section>
+
+            <div className="grid grid-cols-1 gap-xl lg:grid-cols-12">
+                <div className="flex flex-col gap-xl lg:col-span-8">
+                    <div className="grid grid-cols-2 gap-md md:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                            <div key={index} className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-md">
+                                <div className="mx-auto mb-sm h-7 w-7 animate-pulse rounded-full bg-surface-container-high" />
+                                <div className="mx-auto mb-sm h-3 w-16 animate-pulse rounded bg-surface-container" />
+                                <div className="mx-auto h-5 w-20 animate-pulse rounded bg-surface-container-high" />
+                            </div>
+                        ))}
+                    </div>
+
+                    <section>
+                        <div className="mb-md h-8 w-48 animate-pulse rounded bg-surface-container-high" />
+                        <div className="space-y-sm rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-lg shadow-sm">
+                            <div className="h-5 w-full animate-pulse rounded bg-surface-container" />
+                            <div className="h-5 w-11/12 animate-pulse rounded bg-surface-container" />
+                            <div className="h-5 w-4/5 animate-pulse rounded bg-surface-container" />
+                        </div>
+                    </section>
+                </div>
+
+                <aside className="lg:col-span-4">
+                    <div className="sticky top-28 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-lg shadow-lg">
+                        <div className="absolute left-0 top-0 h-1 w-full bg-surface-container-high" />
+                        <div className="mb-lg flex justify-between gap-md">
+                            <div className="space-y-sm">
+                                <div className="h-3 w-24 animate-pulse rounded bg-surface-container" />
+                                <div className="h-10 w-32 animate-pulse rounded bg-surface-container-high" />
+                            </div>
+                            <div className="h-12 w-20 animate-pulse rounded-lg bg-surface-container" />
+                        </div>
+                        <div className="h-12 w-full animate-pulse rounded-lg bg-surface-container-high" />
+                    </div>
+                </aside>
+            </div>
+        </main>
+    );
+}
 
 export default function ClassDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
+    const [isEnrollConfirmOpen, setIsEnrollConfirmOpen] = useState(false);
 
     // 1. Lấy dữ liệu chi tiết lớp học từ Backend
     const { data: response, isLoading, isError } = useQuery({
@@ -27,6 +87,7 @@ export default function ClassDetailPage() {
             toast.success("Successfully enrolled in the class!");
             // Cập nhật lại số lượng học viên
             queryClient.invalidateQueries({ queryKey: ["classDetail", id] });
+            queryClient.invalidateQueries({ queryKey: ["myEnrollments"] });
         },
         onError: (error) => {
             if (error.response?.status === 401) {
@@ -44,9 +105,7 @@ export default function ClassDetailPage() {
         return (
             <div className="flex flex-col min-h-screen bg-background">
                 <Header />
-                <main className="flex-grow flex items-center justify-center">
-                    <span className="animate-spin h-10 w-10 rounded-full border-4 border-primary border-t-transparent"></span>
-                </main>
+                <ClassDetailSkeleton />
                 <Footer />
             </div>
         );
@@ -69,7 +128,28 @@ export default function ClassDetailPage() {
 
     const classData = response.data.class;
     const isFull = classData.currentStudents >= classData.maxStudents;
+    const isAdmin = user?.role === "admin";
     const progressPercent = classData.maxStudents > 0 ? Math.round((classData.currentStudents / classData.maxStudents) * 100) : 0;
+
+    const handleEnrollClick = () => {
+        if (!isAuthenticated) {
+            toast.error("Please login to enroll in this class.");
+            navigate("/login");
+            return;
+        }
+
+        if (isAdmin) {
+            toast.error("Admins cannot enroll in classes.");
+            return;
+        }
+
+        setIsEnrollConfirmOpen(true);
+    };
+
+    const handleConfirmEnroll = () => {
+        setIsEnrollConfirmOpen(false);
+        enrollMutation.mutate();
+    };
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container">
@@ -149,13 +229,23 @@ export default function ClassDetailPage() {
                                 </div>
                             </div>
 
-                            <Button className="w-full h-12" onClick={() => enrollMutation.mutate()} disabled={isFull || enrollMutation.isPending}>
-                                {enrollMutation.isPending ? "Enrolling..." : isFull ? "Class Full" : "Enroll Now"}
+                            <Button className="w-full h-12" onClick={handleEnrollClick} disabled={isAdmin || isFull || enrollMutation.isPending}>
+                                {enrollMutation.isPending ? "Enrolling..." : isAdmin ? "Admins Cannot Enroll" : isFull ? "Class Full" : "Enroll Now"}
                             </Button>
                         </div>
                     </aside>
                 </div>
             </main>
+
+            <ConfirmDialog
+                isOpen={isEnrollConfirmOpen}
+                title="Enroll in this class?"
+                message={`Reserve your spot in "${classData.title}".`}
+                confirmLabel="Enroll"
+                isLoading={enrollMutation.isPending}
+                onCancel={() => setIsEnrollConfirmOpen(false)}
+                onConfirm={handleConfirmEnroll}
+            />
 
             <Footer />
         </div>

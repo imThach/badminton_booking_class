@@ -9,6 +9,7 @@ export default function Button({
         primary: "bg-primary text-on-primary hover:bg-primary-container",
         ghost: "bg-transparent text-on-surface-variant hover:bg-surface-container",
         secondary: "bg-surface-container text-on-surface hover:bg-surface-container-high",
+        danger: "bg-error text-on-error hover:bg-error-container hover:text-on-error-container",
     };
 
     return (

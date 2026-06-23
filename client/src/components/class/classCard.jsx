@@ -3,7 +3,7 @@ import { MdOutlinePerson } from "react-icons/md";
 import { MdOutlineSchedule } from "react-icons/md";
 import { IoLocationOutline } from "react-icons/io5";
 
-export default function ClassCard({ item, onView }) {
+export default function ClassCard({ item, onView, actionSlot }) {
     // Map dữ liệu từ Backend API (hoặc mock data)
     const title = item.title || item.name;
     const coach = item.coachName || item.coach;
@@ -54,9 +54,14 @@ export default function ClassCard({ item, onView }) {
                         <div className={`${isFull ? 'bg-error' : 'bg-primary'} h-full rounded-full transition-all duration-500`} style={{ width: `${progressPercentage}%` }}></div>
                     </div>
 
-                    <button onClick={() => onView && onView(item)} className={`w-full py-2.5 px-4 rounded-lg font-bold text-label-sm transition-colors ${isFull ? 'border-2 border-primary text-primary bg-transparent hover:bg-primary-container/20' : 'bg-primary text-white hover:bg-primary-container active:scale-[0.98]'}`}>
-                        View Details
-                    </button>
+                    {actionSlot || (
+                        <button
+                            onClick={() => onView && onView(item)}
+                            className={`w-full py-2.5 px-4 rounded-lg font-bold text-label-sm transition-colors ${isFull ? "border-2 border-primary text-primary bg-transparent hover:bg-primary-container/20" : "bg-primary text-white hover:bg-primary-container active:scale-[0.98]"}`}
+                        >
+                            View Details
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

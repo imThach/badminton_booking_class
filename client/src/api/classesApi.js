@@ -17,4 +17,12 @@ export const classesApi = {
     const response = await api.delete(`/classes/${id}`);
     return response.data;
   },
+  async getStudents(id) {
+    const response = await api.get(`/classes/${id}/students`);
+    return response.data;
+  },
+  async removeStudent({ classId, userId }) {
+    const response = await api.delete(`/classes/${classId}/students/${userId}`);
+    return response.data;
+  },
 };

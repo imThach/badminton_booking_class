@@ -45,19 +45,51 @@ app.use((req, res, next) => {
     next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
-app.use((err, req, res, next) => {
+const normalizeError = (err) => {
     if (err.name === 'JsonWebTokenError') {
-        err = new AppError('Invalid token. Please log in again', 401);
+        return new AppError('Invalid token. Please log in again', 401);
     }
 
     if (err.name === 'TokenExpiredError') {
-        err = new AppError('Your token has expired. Please log in again', 401);
+        return new AppError('Your token has expired. Please log in again', 401);
     }
 
+    if (err.type === 'entity.parse.failed') {
+        return new AppError('Invalid JSON request body', 400);
+    }
+
+    if (err.name === 'ValidationError') {
+        const message = Object.values(err.errors).map((item) => item.message).join('. ');
+        return new AppError(message, 400);
+    }
+
+    if (err.name === 'CastError') {
+        return new AppError(`Invalid ${err.path}: ${err.value}`, 400);
+    }
+
+    if (err.code === 11000) {
+        const fields = Object.keys(err.keyValue || {}).join(', ') || 'field';
+        return new AppError(`Duplicate value for ${fields}`, 409);
+    }
+
+    if (!err.isOperational && err.statusCode && err.statusCode < 500 && err.expose) {
+        return new AppError(err.message, err.statusCode);
+    }
+
+    return err;
+};
+
+app.use((err, req, res, next) => {
+    err = normalizeError(err);
     const statusCode = err.statusCode || 500;
+    const status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+
+    if (process.env.NODE_ENV === 'production' && !err.isOperational) {
+        console.error(err);
+    }
 
     res.status(statusCode).json({
-        status: err.status || 'error',
+        status,
         message: err.isOperational ? err.message : 'Internal server error',
         ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
     });

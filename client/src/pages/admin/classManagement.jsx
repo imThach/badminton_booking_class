@@ -1,13 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { Plus, Users, Pencil, Trash2, X, UserMinus } from "lucide-react";
 import { classesApi } from "../../api/classesApi";
 import Button from "../../components/common/Button";
-import { IoMdAdd } from "react-icons/io";
-import { FaUserGroup } from "react-icons/fa6";
-import { MdEdit } from "react-icons/md";
-import { MdDeleteOutline } from "react-icons/md";
-import { IoClose } from "react-icons/io5";
+import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
 import Header from "../../components/layout/header.jsx";
 import Footer from "../../components/layout/footer.jsx";
 
@@ -22,25 +19,241 @@ const initialClassForm = {
     maxStudents: "",
 };
 
+const toDateInputValue = (value) => {
+    if (!value) return "";
+    return new Date(value).toISOString().slice(0, 10);
+};
+
+const toClassForm = (classItem) => ({
+    title: classItem.title || "",
+    description: classItem.description || "",
+    coachName: classItem.coachName || "",
+    level: classItem.level || "beginner",
+    startDate: toDateInputValue(classItem.startDate),
+    schedule: classItem.schedule || "",
+    location: classItem.location || "",
+    maxStudents: classItem.maxStudents || "",
+});
+
+function ClassFormModal({
+    title,
+    description,
+    form,
+    isSaving,
+    submitLabel,
+    onChange,
+    onClose,
+    onSubmit,
+}) {
+    const inputClassName =
+        "mt-xs w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
+    const labelClassName = "text-label-sm font-semibold text-on-surface";
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-md py-lg backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="class-form-title"
+        >
+            <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
+                <div className="flex items-start justify-between gap-md border-b border-outline-variant px-lg py-md">
+                    <div>
+                        <p className="text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
+                            Admin
+                        </p>
+                        <h2 id="class-form-title" className="mt-xs text-headline-lg font-semibold text-on-surface">
+                            {title}
+                        </h2>
+                        <p className="mt-xs text-body-md text-on-surface-variant">{description}</p>
+                    </div>
+                    <button
+                        className="rounded-full p-sm text-on-surface-variant transition-colors hover:bg-surface-container-high"
+                        onClick={onClose}
+                        type="button"
+                        aria-label="Close class form modal"
+                    >
+                        <X size={22} />
+                    </button>
+                </div>
+
+                <form className="space-y-lg px-lg py-lg" onSubmit={onSubmit}>
+                    <div className="grid gap-md sm:grid-cols-2">
+                        <label className="sm:col-span-2">
+                            <span className={labelClassName}>Class title</span>
+                            <input
+                                className={inputClassName}
+                                name="title"
+                                onChange={onChange}
+                                placeholder="Morning Badminton Basics"
+                                required
+                                value={form.title}
+                            />
+                        </label>
+
+                        <label>
+                            <span className={labelClassName}>Coach</span>
+                            <input
+                                className={inputClassName}
+                                name="coachName"
+                                onChange={onChange}
+                                placeholder="Nguyen Van A"
+                                required
+                                value={form.coachName}
+                            />
+                        </label>
+
+                        <label>
+                            <span className={labelClassName}>Level</span>
+                            <select
+                                className={inputClassName}
+                                name="level"
+                                onChange={onChange}
+                                required
+                                value={form.level}
+                            >
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </label>
+
+                        <label>
+                            <span className={labelClassName}>Start date</span>
+                            <input
+                                className={inputClassName}
+                                name="startDate"
+                                onChange={onChange}
+                                required
+                                type="date"
+                                value={form.startDate}
+                            />
+                        </label>
+
+                        <label>
+                            <span className={labelClassName}>Max students</span>
+                            <input
+                                className={inputClassName}
+                                min="1"
+                                name="maxStudents"
+                                onChange={onChange}
+                                placeholder="16"
+                                required
+                                type="number"
+                                value={form.maxStudents}
+                            />
+                        </label>
+
+                        <label>
+                            <span className={labelClassName}>Schedule</span>
+                            <input
+                                className={inputClassName}
+                                name="schedule"
+                                onChange={onChange}
+                                placeholder="Mon/Wed/Fri 6-7pm"
+                                required
+                                value={form.schedule}
+                            />
+                        </label>
+
+                        <label>
+                            <span className={labelClassName}>Location</span>
+                            <input
+                                className={inputClassName}
+                                name="location"
+                                onChange={onChange}
+                                placeholder="Court 1, District 1"
+                                required
+                                value={form.location}
+                            />
+                        </label>
+
+                        <label className="sm:col-span-2">
+                            <span className={labelClassName}>Description</span>
+                            <textarea
+                                className={`${inputClassName} min-h-28 resize-y`}
+                                name="description"
+                                onChange={onChange}
+                                placeholder="Describe the focus, goals, and requirements for this class."
+                                required
+                                value={form.description}
+                            />
+                        </label>
+                    </div>
+
+                    <div className="flex flex-col-reverse gap-sm border-t border-outline-variant pt-md sm:flex-row sm:justify-end">
+                        <Button
+                            className="px-md py-sm"
+                            disabled={isSaving}
+                            onClick={onClose}
+                            type="button"
+                            variant="secondary"
+                        >
+                            Cancel
+                        </Button>
+                        <Button className="px-md py-sm" disabled={isSaving} type="submit">
+                            {isSaving ? "Saving..." : submitLabel}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 export default function ClassManagement() {
     const queryClient = useQueryClient();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingClass, setEditingClass] = useState(null);
+    const [studentsClass, setStudentsClass] = useState(null);
     const [classForm, setClassForm] = useState(initialClassForm);
-    const {
-        data,
-        isError,
-        isLoading,
-    } = useQuery({
+    const [confirm, setConfirm] = useState(null);
+
+    const { data, isError, isLoading } = useQuery({
         queryKey: ["admin", "classes"],
         queryFn: classesApi.list,
     });
+
+    const selectedClassId = studentsClass?._id || studentsClass?.id;
+    const {
+        data: studentsData,
+        isError: isStudentsError,
+        isLoading: isStudentsLoading,
+    } = useQuery({
+        queryKey: ["admin", "classes", selectedClassId, "students"],
+        queryFn: () => classesApi.getStudents(selectedClassId),
+        enabled: !!selectedClassId,
+    });
+
+    const closeConfirm = () => {
+        if (confirm?.isLoading) return;
+        setConfirm(null);
+    };
+
+    const showConfirm = (config) => {
+        setConfirm({ ...config, isLoading: false });
+    };
+
+    const runConfirmedAction = async () => {
+        if (!confirm?.onConfirm) return;
+        setConfirm((current) => ({ ...current, isLoading: true }));
+        try {
+            await confirm.onConfirm();
+        } finally {
+            setConfirm(null);
+        }
+    };
+
+    const invalidateClassQueries = () => {
+        queryClient.invalidateQueries({ queryKey: ["admin", "classes"] });
+        queryClient.invalidateQueries({ queryKey: ["classes"] });
+    };
 
     const deleteMutation = useMutation({
         mutationFn: classesApi.remove,
         onSuccess: () => {
             toast.success("Class deleted.");
-            queryClient.invalidateQueries({ queryKey: ["admin", "classes"] });
-            queryClient.invalidateQueries({ queryKey: ["classes"] });
+            invalidateClassQueries();
         },
         onError: (error) => {
             toast.error(error.response?.data?.message || "Failed to delete class.");
@@ -51,8 +264,7 @@ export default function ClassManagement() {
         mutationFn: classesApi.create,
         onSuccess: () => {
             toast.success("Class created.");
-            queryClient.invalidateQueries({ queryKey: ["admin", "classes"] });
-            queryClient.invalidateQueries({ queryKey: ["classes"] });
+            invalidateClassQueries();
             setClassForm(initialClassForm);
             setIsAddModalOpen(false);
         },
@@ -61,7 +273,33 @@ export default function ClassManagement() {
         },
     });
 
+    const updateMutation = useMutation({
+        mutationFn: ({ id, payload }) => classesApi.update(id, payload),
+        onSuccess: () => {
+            toast.success("Class updated.");
+            invalidateClassQueries();
+            setEditingClass(null);
+            setClassForm(initialClassForm);
+        },
+        onError: (error) => {
+            toast.error(error.response?.data?.message || "Failed to update class.");
+        },
+    });
+
+    const removeStudentMutation = useMutation({
+        mutationFn: classesApi.removeStudent,
+        onSuccess: () => {
+            toast.success("Student removed from class.");
+            invalidateClassQueries();
+            queryClient.invalidateQueries({ queryKey: ["admin", "classes", selectedClassId, "students"] });
+        },
+        onError: (error) => {
+            toast.error(error.response?.data?.message || "Failed to remove student.");
+        },
+    });
+
     const classes = data?.data?.classes || [];
+    const students = studentsData?.data?.students || [];
 
     const handleFormChange = (event) => {
         const { name, value } = event.target;
@@ -71,24 +309,71 @@ export default function ClassManagement() {
         }));
     };
 
-    const handleCloseAddModal = () => {
-        if (createMutation.isPending) return;
+    const handleCloseClassModal = () => {
+        if (createMutation.isPending || updateMutation.isPending) return;
         setIsAddModalOpen(false);
+        setEditingClass(null);
         setClassForm(initialClassForm);
     };
 
+    const buildPayload = () => ({
+        ...classForm,
+        maxStudents: Number(classForm.maxStudents),
+    });
+
     const handleCreateClass = (event) => {
         event.preventDefault();
+        const payload = buildPayload();
 
-        createMutation.mutate({
-            ...classForm,
-            maxStudents: Number(classForm.maxStudents),
+        showConfirm({
+            title: "Create this class?",
+            message: `Save "${payload.title}" and make it visible to students.`,
+            confirmLabel: "Create Class",
+            onConfirm: () => createMutation.mutateAsync(payload),
         });
     };
 
-    const inputClassName =
-        "mt-xs w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
-    const labelClassName = "text-label-sm font-semibold text-on-surface";
+    const handleEditClass = (classItem) => {
+        setEditingClass(classItem);
+        setClassForm(toClassForm(classItem));
+    };
+
+    const handleUpdateClass = (event) => {
+        event.preventDefault();
+        const payload = buildPayload();
+        const id = editingClass?._id || editingClass?.id;
+
+        showConfirm({
+            title: "Save class changes?",
+            message: `Update "${payload.title}" with the new details.`,
+            confirmLabel: "Save Changes",
+            onConfirm: () => updateMutation.mutateAsync({ id, payload }),
+        });
+    };
+
+    const handleDeleteClass = (classItem) => {
+        const id = classItem._id || classItem.id;
+
+        showConfirm({
+            title: "Delete this class?",
+            message: `This will permanently delete "${classItem.title}". Classes with enrolled students cannot be deleted.`,
+            confirmLabel: "Delete Class",
+            variant: "danger",
+            onConfirm: () => deleteMutation.mutateAsync(id),
+        });
+    };
+
+    const handleRemoveStudent = (student) => {
+        const userId = student.user?._id || student.user?.id;
+
+        showConfirm({
+            title: "Remove this student?",
+            message: `Remove ${student.user?.name || student.user?.email || "this student"} from "${studentsClass?.title}".`,
+            confirmLabel: "Remove Student",
+            variant: "danger",
+            onConfirm: () => removeStudentMutation.mutateAsync({ classId: selectedClassId, userId }),
+        });
+    };
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -110,7 +395,7 @@ export default function ClassManagement() {
                         </div>
 
                         <Button className="px-md py-md" onClick={() => setIsAddModalOpen(true)}>
-                            <IoMdAdd/>
+                            <Plus size={18} />
                             Add New Class
                         </Button>
                     </div>
@@ -182,19 +467,30 @@ export default function ClassManagement() {
                                                         </span>
                                                     </td>
                                                     <td className="px-lg py-md text-right">
-                                                        <button className="rounded-full p-sm text-primary hover:bg-primary-container/10" type="button">
-                                                            <FaUserGroup />
+                                                        <button
+                                                            className="rounded-full p-sm text-primary hover:bg-primary-container/10"
+                                                            onClick={() => setStudentsClass(item)}
+                                                            type="button"
+                                                            aria-label={`View students for ${item.title}`}
+                                                        >
+                                                            <Users size={18} />
                                                         </button>
-                                                        <button className="ml-xs rounded-full p-sm text-on-surface-variant hover:bg-surface-container-high" type="button">
-                                                            <MdEdit size={18}/>
+                                                        <button
+                                                            className="ml-xs rounded-full p-sm text-on-surface-variant hover:bg-surface-container-high"
+                                                            onClick={() => handleEditClass(item)}
+                                                            type="button"
+                                                            aria-label={`Edit ${item.title}`}
+                                                        >
+                                                            <Pencil size={18} />
                                                         </button>
                                                         <button
                                                             className="ml-xs rounded-full p-sm text-error hover:bg-error-container disabled:cursor-not-allowed disabled:opacity-50"
                                                             disabled={deleteMutation.isPending}
-                                                            onClick={() => deleteMutation.mutate(id)}
+                                                            onClick={() => handleDeleteClass(item)}
                                                             type="button"
+                                                            aria-label={`Delete ${item.title}`}
                                                         >
-                                                            <MdDeleteOutline size={20}/>
+                                                            <Trash2 size={20} />
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -209,161 +505,135 @@ export default function ClassManagement() {
             </main>
 
             {isAddModalOpen && (
+                <ClassFormModal
+                    title="Add New Class"
+                    description="Create a class with schedule, coach, location, and capacity details."
+                    form={classForm}
+                    isSaving={createMutation.isPending}
+                    submitLabel="Create Class"
+                    onChange={handleFormChange}
+                    onClose={handleCloseClassModal}
+                    onSubmit={handleCreateClass}
+                />
+            )}
+
+            {editingClass && (
+                <ClassFormModal
+                    title="Edit Class"
+                    description="Update schedule, coach, location, capacity, or description."
+                    form={classForm}
+                    isSaving={updateMutation.isPending}
+                    submitLabel="Save Changes"
+                    onChange={handleFormChange}
+                    onClose={handleCloseClassModal}
+                    onSubmit={handleUpdateClass}
+                />
+            )}
+
+            {studentsClass && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/40 px-md py-lg backdrop-blur-sm"
                     role="dialog"
                     aria-modal="true"
-                    aria-labelledby="add-class-title"
+                    aria-labelledby="students-modal-title"
                 >
-                    <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
+                    <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
                         <div className="flex items-start justify-between gap-md border-b border-outline-variant px-lg py-md">
                             <div>
                                 <p className="text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                                    Admin
+                                    Students
                                 </p>
-                                <h2 id="add-class-title" className="mt-xs text-headline-lg font-semibold text-on-surface">
-                                    Add New Class
+                                <h2 id="students-modal-title" className="mt-xs text-headline-lg font-semibold text-on-surface">
+                                    {studentsClass.title}
                                 </h2>
                                 <p className="mt-xs text-body-md text-on-surface-variant">
-                                    Create a class with schedule, coach, location, and capacity details.
+                                    {students.length} / {studentsData?.data?.class?.maxStudents || studentsClass.maxStudents || 0} enrolled
                                 </p>
                             </div>
                             <button
                                 className="rounded-full p-sm text-on-surface-variant transition-colors hover:bg-surface-container-high"
-                                onClick={handleCloseAddModal}
+                                onClick={() => setStudentsClass(null)}
                                 type="button"
-                                aria-label="Close add class modal"
+                                aria-label="Close students modal"
                             >
-                                <IoClose size={22} />
+                                <X size={22} />
                             </button>
                         </div>
 
-                        <form className="space-y-lg px-lg py-lg" onSubmit={handleCreateClass}>
-                            <div className="grid gap-md sm:grid-cols-2">
-                                <label className="sm:col-span-2">
-                                    <span className={labelClassName}>Class title</span>
-                                    <input
-                                        className={inputClassName}
-                                        name="title"
-                                        onChange={handleFormChange}
-                                        placeholder="Morning Badminton Basics"
-                                        required
-                                        value={classForm.title}
-                                    />
-                                </label>
+                        <div className="max-h-[65vh] overflow-y-auto px-lg py-lg">
+                            {isStudentsLoading && (
+                                <div className="flex items-center justify-center py-xl">
+                                    <span className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                                </div>
+                            )}
 
-                                <label>
-                                    <span className={labelClassName}>Coach</span>
-                                    <input
-                                        className={inputClassName}
-                                        name="coachName"
-                                        onChange={handleFormChange}
-                                        placeholder="Nguyen Van A"
-                                        required
-                                        value={classForm.coachName}
-                                    />
-                                </label>
+                            {isStudentsError && (
+                                <div className="rounded-lg bg-error-container px-md py-lg text-center font-semibold text-on-error-container">
+                                    Failed to load students.
+                                </div>
+                            )}
 
-                                <label>
-                                    <span className={labelClassName}>Level</span>
-                                    <select
-                                        className={inputClassName}
-                                        name="level"
-                                        onChange={handleFormChange}
-                                        required
-                                        value={classForm.level}
-                                    >
-                                        <option value="beginner">Beginner</option>
-                                        <option value="intermediate">Intermediate</option>
-                                        <option value="advanced">Advanced</option>
-                                    </select>
-                                </label>
+                            {!isStudentsLoading && !isStudentsError && students.length === 0 && (
+                                <div className="rounded-lg border border-outline-variant bg-surface-container-low px-md py-lg text-center text-on-surface-variant">
+                                    No students enrolled in this class yet.
+                                </div>
+                            )}
 
-                                <label>
-                                    <span className={labelClassName}>Start date</span>
-                                    <input
-                                        className={inputClassName}
-                                        name="startDate"
-                                        onChange={handleFormChange}
-                                        required
-                                        type="date"
-                                        value={classForm.startDate}
-                                    />
-                                </label>
-
-                                <label>
-                                    <span className={labelClassName}>Max students</span>
-                                    <input
-                                        className={inputClassName}
-                                        min="1"
-                                        name="maxStudents"
-                                        onChange={handleFormChange}
-                                        placeholder="16"
-                                        required
-                                        type="number"
-                                        value={classForm.maxStudents}
-                                    />
-                                </label>
-
-                                <label>
-                                    <span className={labelClassName}>Schedule</span>
-                                    <input
-                                        className={inputClassName}
-                                        name="schedule"
-                                        onChange={handleFormChange}
-                                        placeholder="Mon/Wed/Fri 6-7pm"
-                                        required
-                                        value={classForm.schedule}
-                                    />
-                                </label>
-
-                                <label>
-                                    <span className={labelClassName}>Location</span>
-                                    <input
-                                        className={inputClassName}
-                                        name="location"
-                                        onChange={handleFormChange}
-                                        placeholder="Court 1, District 1"
-                                        required
-                                        value={classForm.location}
-                                    />
-                                </label>
-
-                                <label className="sm:col-span-2">
-                                    <span className={labelClassName}>Description</span>
-                                    <textarea
-                                        className={`${inputClassName} min-h-28 resize-y`}
-                                        name="description"
-                                        onChange={handleFormChange}
-                                        placeholder="Describe the focus, goals, and requirements for this class."
-                                        required
-                                        value={classForm.description}
-                                    />
-                                </label>
-                            </div>
-
-                            <div className="flex flex-col-reverse gap-sm border-t border-outline-variant pt-md sm:flex-row sm:justify-end">
-                                <Button
-                                    className="px-md py-sm"
-                                    disabled={createMutation.isPending}
-                                    onClick={handleCloseAddModal}
-                                    type="button"
-                                    variant="secondary"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    className="px-md py-sm"
-                                    disabled={createMutation.isPending}
-                                    type="submit"
-                                >
-                                    {createMutation.isPending ? "Creating..." : "Create Class"}
-                                </Button>
-                            </div>
-                        </form>
+                            {!isStudentsLoading && !isStudentsError && students.length > 0 && (
+                                <div className="overflow-x-auto rounded-lg border border-outline-variant">
+                                    <table className="w-full border-collapse text-left">
+                                        <thead>
+                                            <tr className="border-b border-outline-variant bg-surface-container">
+                                                <th className="px-md py-sm text-label-sm text-on-surface-variant">Student</th>
+                                                <th className="px-md py-sm text-label-sm text-on-surface-variant">Email</th>
+                                                <th className="px-md py-sm text-label-sm text-on-surface-variant">Enrolled At</th>
+                                                <th className="px-md py-sm text-right text-label-sm text-on-surface-variant">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-outline-variant">
+                                            {students.map((student) => (
+                                                <tr key={student.enrollmentId}>
+                                                    <td className="px-md py-sm font-semibold text-on-surface">
+                                                        {student.user?.name || "Unknown"}
+                                                    </td>
+                                                    <td className="px-md py-sm text-on-surface-variant">
+                                                        {student.user?.email || "-"}
+                                                    </td>
+                                                    <td className="px-md py-sm text-on-surface-variant">
+                                                        {student.enrolledAt ? new Date(student.enrolledAt).toLocaleString() : "-"}
+                                                    </td>
+                                                    <td className="px-md py-sm text-right">
+                                                        <button
+                                                            className="rounded-full p-sm text-error hover:bg-error-container disabled:cursor-not-allowed disabled:opacity-50"
+                                                            disabled={removeStudentMutation.isPending}
+                                                            onClick={() => handleRemoveStudent(student)}
+                                                            type="button"
+                                                            aria-label={`Remove ${student.user?.name || "student"}`}
+                                                        >
+                                                            <UserMinus size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={!!confirm}
+                title={confirm?.title}
+                message={confirm?.message}
+                confirmLabel={confirm?.confirmLabel}
+                variant={confirm?.variant}
+                isLoading={confirm?.isLoading}
+                onCancel={closeConfirm}
+                onConfirm={runConfirmedAction}
+            />
 
             <Footer />
         </div>
