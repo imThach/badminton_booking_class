@@ -5,8 +5,23 @@ const getSender = () =>
     process.env.EMAIL_FROM ||
     `Badminton Booking <${process.env.EMAIL_USERNAME || process.env.EMAIL_USER}>`;
 
+const getEmailUser = () => process.env.EMAIL_USERNAME || process.env.EMAIL_USER;
+const getEmailPass = () => process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
+const getDefaultHost = (user) => {
+    if (user && String(user).toLowerCase().endsWith('@gmail.com')) {
+        return 'smtp.gmail.com';
+    }
+
+    return 'smtp-relay.brevo.com';
+};
+const getDefaultPort = (host) => (host === 'smtp.gmail.com' ? 465 : 2525);
 const sendEmail = async ({ email, subject, message, html }) => {
-    const host = process.env.EMAIL_HOST || 'smtp-relay.brevo.com'; 
+    const user = getEmailUser();
+    const pass = getEmailPass();
+    if (!user || !pass) {
+        throw new Error('Email credentials are not configured');
+    }
+    const host = process.env.EMAIL_HOST || getDefaultHost(user);
     const addressFamily = Number(process.env.EMAIL_ADDRESS_FAMILY || 4);
 
     const resolvedHost =
@@ -14,14 +29,11 @@ const sendEmail = async ({ email, subject, message, html }) => {
             ? (await dns.resolve4(host))[0]
             : host;
 
-    const port = Number(process.env.EMAIL_PORT || 2525);
+    const port = Number(process.env.EMAIL_PORT || getDefaultPort(host));
 
     const secure = process.env.EMAIL_SECURE !== undefined
         ? String(process.env.EMAIL_SECURE) === 'true'
         : port === 465;
-
-    const user = process.env.EMAIL_USERNAME || process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
 
     const transporter = nodemailer.createTransport({
         host: resolvedHost,

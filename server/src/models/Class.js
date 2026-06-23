@@ -12,29 +12,34 @@ const classSchema = new mongoose.Schema(
         },
         coachName: {
             type: String,
-            required: [true, 'PLease enter the coach name'],
+            required: [true, 'Please enter the coach name'],
         },
         level: {
             type: String,
             enum: ['beginner', 'intermediate', 'advanced'],
-            required: [true, 'PLease select the class level'],
+            required: [true, 'Please select the class level'],
         },
         startDate: {
             type: Date,
-            required: [true, 'PLease enter the start date of the class'],
+            required: [true, 'Please enter the start date of the class'],
         },
         schedule: {
             type: String,
-            required: [true, 'PLease enter the schedule of the class (e.g., "Mon/Wed/Fri 6-7pm")'],
+            required: [true, 'Please enter the schedule of the class (e.g., "Mon/Wed/Fri 6-7pm")'],
         },
         location: {
             type: String,
-            required: [true, 'Vui lòng nhập địa điểm học'],
+            required: [true, 'Please enter the class location'],
         },
         maxStudents: {
             type: Number,
-            required: [true, 'Vui lòng nhập số lượng học viên tối đa'],
-            min: [1, 'Số lượng học viên phải lớn hơn 0'],
+            required: [true, 'Please enter the maximum number of students'],
+            min: [1, 'Maximum students must be greater than 0'],
+        },
+        currentStudents: {
+            type: Number,
+            default: 0,
+            min: [0, 'Current students cannot be negative'],
         },
         createdBy: {
             type: mongoose.Schema.ObjectId,

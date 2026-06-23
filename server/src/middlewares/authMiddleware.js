@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
-const { hashToken, sanitizeUser } = require('../services/authService');
+const { hashToken, pruneExpiredActiveTokens, sanitizeUser } = require('../services/authService');
 
 exports.protect = catchAsync(async (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -26,19 +26,20 @@ exports.protect = catchAsync(async (req, res, next) => {
         return next(new AppError('The user belonging to this token no longer exists', 401));
     }
 
-    // Ngăn chặn token cũ nếu user đã đổi mật khẩu
+    // Reject tokens issued before the most recent password change.
     if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat)) {
-        return next(new AppError('Mật khẩu gần đây đã được thay đổi! Vui lòng đăng nhập lại.', 401));
+        return next(new AppError('Password was recently changed. Please log in again.', 401));
     }
 
-    // Đảm bảo token vẫn còn tồn tại trong DB (nghĩa là user chưa bấm Đăng xuất)
+    // Ensure the token is still an active session.
     const tokenHash = hashToken(token);
     const isValidSession = currentUser.activeTokens.some(t => t.tokenHash === tokenHash);
     if (!isValidSession) {
-        return next(new AppError('Phiên đăng nhập đã hết hạn hoặc đã bị đăng xuất.', 401));
+        return next(new AppError('Session has expired or has been logged out.', 401));
     }
 
-    req.token = token; // Lưu lại raw token để xử lý logout
+    await pruneExpiredActiveTokens(currentUser);
+    req.token = token;
     req.user = sanitizeUser(currentUser);
     next();
 });

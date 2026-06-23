@@ -27,9 +27,9 @@ const userSchema = new mongoose.Schema(
         passwordChangedAt: Date,
         isVerified: {
             type: Boolean,
-            default: true,
+            default: false,
         },
-        // Lưu danh sách các token đang hoạt động trong DB
+        // Store active session token hashes.
         activeTokens: [
             {
                 tokenHash: {
@@ -43,19 +43,19 @@ const userSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Middleware: Mã hóa mật khẩu trước khi lưu
+// Hash the password before saving.
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
     if (this.$locals.passwordAlreadyHashed) return;
     this.password = await bcrypt.hash(this.password, 12);
 });
 
-// Hàm hỗ trợ: So sánh mật khẩu khi đăng nhập
+// Compare a candidate password during login.
 userSchema.methods.correctPassword = async function (candidatePassword, userPassword) {
     return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-// Hàm hỗ trợ: Kiểm tra xem user có đổi mật khẩu sau khi token được tạo không
+// Check whether the password changed after a token was issued.
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
     if (this.passwordChangedAt) {
         const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);

@@ -9,44 +9,33 @@ const assertValidClassId = (classId) => {
     }
 };
 
-const addCurrentStudentsToEnrollment = async (enrollment) => {
+const toEnrollmentResponse = (enrollment) => {
     if (!enrollment || !enrollment.class) return enrollment;
 
     const enrollmentObject = enrollment.toObject ? enrollment.toObject() : enrollment;
-    const classId = enrollmentObject.class._id || enrollmentObject.class;
-    const currentStudents = await Enrollment.countDocuments({ class: classId });
-
-    enrollmentObject.class = {
-        ...enrollmentObject.class,
-        currentStudents,
-    };
-
     return enrollmentObject;
 };
 
-const addCurrentStudentsToEnrollments = async (enrollments) => {
-    const classIds = enrollments
-        .map((enrollment) => enrollment.class && enrollment.class._id)
-        .filter(Boolean);
+const toEnrollmentResponses = (enrollments) => enrollments.map(toEnrollmentResponse);
 
-    const enrollmentCounts = await Enrollment.aggregate([
-        { $match: { class: { $in: classIds } } },
-        { $group: { _id: '$class', currentStudents: { $sum: 1 } } },
-    ]);
-    const countByClassId = new Map(
-        enrollmentCounts.map((item) => [item._id.toString(), item.currentStudents])
+const releaseReservedSlot = async (classId) => {
+    await Class.findOneAndUpdate(
+        {
+            _id: classId,
+            currentStudents: { $gt: 0 },
+        },
+        { $inc: { currentStudents: -1 } },
+        { runValidators: true }
     );
+};
 
-    return enrollments.map((enrollment) => {
-        const enrollmentObject = enrollment.toObject ? enrollment.toObject() : enrollment;
-
-        if (enrollmentObject.class && enrollmentObject.class._id) {
-            enrollmentObject.class.currentStudents =
-                countByClassId.get(enrollmentObject.class._id.toString()) || 0;
-        }
-
-        return enrollmentObject;
-    });
+const syncClassCurrentStudents = async (classId) => {
+    const currentStudents = await Enrollment.countDocuments({ class: classId });
+    return Class.findByIdAndUpdate(
+        classId,
+        { currentStudents },
+        { new: true, runValidators: true }
+    );
 };
 
 exports.enrollClass = async ({ classId, userId }) => {
@@ -70,8 +59,16 @@ exports.enrollClass = async ({ classId, userId }) => {
         throw new AppError('You have already enrolled in this class', 409);
     }
 
-    const currentStudents = await Enrollment.countDocuments({ class: classId });
-    if (currentStudents >= classDetail.maxStudents) {
+    const reservedClass = await Class.findOneAndUpdate(
+        {
+            _id: classId,
+            $expr: { $lt: [{ $ifNull: ['$currentStudents', 0] }, '$maxStudents'] },
+        },
+        { $inc: { currentStudents: 1 } },
+        { new: true, runValidators: true }
+    );
+
+    if (!reservedClass) {
         throw new AppError('This class is full', 400);
     }
 
@@ -85,8 +82,9 @@ exports.enrollClass = async ({ classId, userId }) => {
             .populate('class')
             .populate('user', 'name email role');
 
-        return addCurrentStudentsToEnrollment(populatedEnrollment);
+        return toEnrollmentResponse(populatedEnrollment);
     } catch (error) {
+        await releaseReservedSlot(classId);
         if (error.code === 11000) {
             throw new AppError('You have already enrolled in this class', 409);
         }
@@ -107,7 +105,13 @@ exports.cancelEnrollment = async ({ classId, userId }) => {
         throw new AppError('Enrollment not found', 404);
     }
 
-    return addCurrentStudentsToEnrollment(enrollment);
+    const updatedClass = await syncClassCurrentStudents(classId);
+    const enrollmentResponse = toEnrollmentResponse(enrollment);
+    if (updatedClass) {
+        enrollmentResponse.class = updatedClass;
+    }
+
+    return enrollmentResponse;
 };
 
 exports.getMyEnrollments = async (userId) => {
@@ -121,5 +125,5 @@ exports.getMyEnrollments = async (userId) => {
             },
         });
 
-    return addCurrentStudentsToEnrollments(enrollments);
+    return toEnrollmentResponses(enrollments);
 };

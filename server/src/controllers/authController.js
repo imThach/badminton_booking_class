@@ -12,7 +12,6 @@ const sendTokenResponse = (result, statusCode, res) => {
 
     res.status(statusCode).json({
         status: 'success',
-        token: result.token,
         data: {
             user: result.user,
         },

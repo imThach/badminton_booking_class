@@ -7,6 +7,21 @@ const sendEmail = require('../utils/email');
 
 const OTP_EXPIRES_IN_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 5;
+const DEFAULT_ACTIVE_TOKEN_LIMIT = 5;
+
+const getActiveTokenLimit = () =>
+    Math.max(Number(process.env.MAX_ACTIVE_TOKENS_PER_USER) || DEFAULT_ACTIVE_TOKEN_LIMIT, 1);
+
+const getTokenRetentionDate = () => {
+    const cookieDays = Number(process.env.JWT_COOKIE_EXPIRES_IN) || 30;
+    return new Date(Date.now() - cookieDays * 24 * 60 * 60 * 1000);
+};
+
+const pruneActiveTokens = (activeTokens = []) =>
+    activeTokens
+        .filter((tokenRecord) => tokenRecord.createdAt >= getTokenRetentionDate())
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, getActiveTokenLimit());
 
 const assertJwtConfig = () => {
     if (!process.env.JWT_SECRET) {
@@ -18,7 +33,7 @@ const assertJwtConfig = () => {
     }
 };
 
-// Kiểm tra cấu hình JWT ngay khi module được load (Fail fast)
+// Validate JWT config when the module loads.
 assertJwtConfig();
 
 const signToken = (user) =>
@@ -108,7 +123,7 @@ exports.signup = async ({ name, email, password, role, adminInviteCode }) => {
         await sendSignupOTP({ email: normalizedEmail, name, otp });
     } catch (error) {
         await PendingRegistration.deleteOne({ email: normalizedEmail });
-        throw new AppError(`Khong the gui email OTP: ${error.message}`, 500);
+        throw new AppError(`Could not send OTP email: ${error.message}`, 500);
     }
 
     return {
@@ -155,7 +170,8 @@ exports.verifySignupOTP = async ({ email, otp }) => {
         name: pending.name,
         email: pending.email,
         password: pending.passwordHash,
-        role: pending.role
+        role: pending.role,
+        isVerified: true,
     });
     user.$locals.passwordAlreadyHashed = true;
     await user.save();
@@ -207,7 +223,10 @@ exports.login = async ({ email, password }) => {
     }
 
     const token = signToken(user);
-    user.activeTokens.push({ tokenHash: hashToken(token) });
+    user.activeTokens = pruneActiveTokens([
+        ...user.activeTokens,
+        { tokenHash: hashToken(token), createdAt: new Date() },
+    ]);
     await user.save({ validateBeforeSave: false });
 
     return {
@@ -220,4 +239,13 @@ exports.logout = async (userId, token) => {
     await User.findByIdAndUpdate(userId, {
         $pull: { activeTokens: { tokenHash: hashToken(token) } }
     });
+};
+
+exports.pruneExpiredActiveTokens = async (user) => {
+    const prunedTokens = pruneActiveTokens(user.activeTokens);
+
+    if (prunedTokens.length !== user.activeTokens.length) {
+        user.activeTokens = prunedTokens;
+        await user.save({ validateBeforeSave: false });
+    }
 };
