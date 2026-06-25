@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../api/apiError.js";
 import { authApi } from "../../api/authApi.js";
 import GoogleIcon from "../../components/common/googleicon.jsx";
 import Logo from "../../components/common/logo.jsx";
 import registerBg from "../../assets/public/registerbg.png";
+import { normalizeEmail, validateEmail, validatePassword, validateRequired } from "../../utils/formValidation.js";
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
@@ -14,24 +16,34 @@ export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const navigate = useNavigate();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        const normalizedEmail = normalizeEmail(email);
+        const errors = {
+            name: validateRequired(name, "Full name"),
+            email: validateEmail(normalizedEmail),
+            password: validatePassword(password),
+            terms: agreeTerms ? "" : "Please agree to the Terms and Privacy Policy.",
+        };
+        const nextErrors = Object.fromEntries(Object.entries(errors).filter(([, message]) => message));
 
-        if (!agreeTerms) {
-            toast.error("Please agree to the Terms and Privacy Policy.");
+        if (Object.keys(nextErrors).length > 0) {
+            setFieldErrors(nextErrors);
             return;
         }
 
         try {
+            setFieldErrors({});
             setIsSubmitting(true);
-            await authApi.signup({ name, email, password });
+            await authApi.signup({ name: name.trim(), email: normalizedEmail, password });
             toast.success("OTP has been sent to your email.");
-            navigate("/verify-otp", { state: { email } });
+            navigate("/verify-otp", { state: { email: normalizedEmail } });
         } catch (error) {
-            toast.error(error.response?.data?.message || "Registration failed");
+            toast.error(getApiErrorMessage(error, "Registration failed"));
         } finally {
             setIsSubmitting(false);
         }
@@ -67,12 +79,16 @@ export default function RegisterPage() {
                                     className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
                                     id="name"
                                     name="name"
-                                    onChange={(event) => setName(event.target.value)}
+                                    onChange={(event) => {
+                                        setName(event.target.value);
+                                        setFieldErrors((current) => ({ ...current, name: "" }));
+                                    }}
                                     placeholder="Nguyen Van A"
                                     required
                                     type="text"
                                     value={name}
                                 />
+                                {fieldErrors.name && <p className="text-label-xs text-error">{fieldErrors.name}</p>}
                             </div>
 
                             <div className="space-y-xs">
@@ -83,12 +99,17 @@ export default function RegisterPage() {
                                     className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
                                     id="email"
                                     name="email"
-                                    onChange={(event) => setEmail(event.target.value)}
+                                    onBlur={() => setEmail(normalizeEmail(email))}
+                                    onChange={(event) => {
+                                        setEmail(event.target.value);
+                                        setFieldErrors((current) => ({ ...current, email: "" }));
+                                    }}
                                     placeholder="name@example.com"
                                     required
                                     type="email"
                                     value={email}
                                 />
+                                {fieldErrors.email && <p className="text-label-xs text-error">{fieldErrors.email}</p>}
                             </div>
 
                             <div className="space-y-xs">
@@ -100,7 +121,11 @@ export default function RegisterPage() {
                                         className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md pr-xl text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
                                         id="password"
                                         name="password"
-                                        onChange={(event) => setPassword(event.target.value)}
+                                        minLength={8}
+                                        onChange={(event) => {
+                                            setPassword(event.target.value);
+                                            setFieldErrors((current) => ({ ...current, password: "" }));
+                                        }}
                                         placeholder="Create a password"
                                         required
                                         type={showPassword ? "text" : "password"}
@@ -115,6 +140,7 @@ export default function RegisterPage() {
                                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
+                                {fieldErrors.password && <p className="text-label-xs text-error">{fieldErrors.password}</p>}
                             </div>
 
                             <label className="flex items-start gap-sm text-label-sm text-on-surface-variant" htmlFor="terms">
@@ -122,7 +148,10 @@ export default function RegisterPage() {
                                     checked={agreeTerms}
                                     className="mt-1 h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
                                     id="terms"
-                                    onChange={(event) => setAgreeTerms(event.target.checked)}
+                                    onChange={(event) => {
+                                        setAgreeTerms(event.target.checked);
+                                        setFieldErrors((current) => ({ ...current, terms: "" }));
+                                    }}
                                     type="checkbox"
                                 />
                                 <span>
@@ -136,6 +165,7 @@ export default function RegisterPage() {
                                     </a>
                                 </span>
                             </label>
+                            {fieldErrors.terms && <p className="text-label-xs text-error">{fieldErrors.terms}</p>}
 
                             <button
                                 className="flex h-12 w-full items-center justify-center gap-sm rounded-xl bg-primary px-md font-bold text-on-primary shadow-sm transition-all duration-200 hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80"

@@ -1,4 +1,4 @@
-import { api } from './axiosClient';
+import { api } from './axiosClient.js';
 
 export const classesApi = {
   async list(params) {

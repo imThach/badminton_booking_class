@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { MailCheck } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../../api/apiError.js";
 import { authApi } from "../../api/authApi.js";
 import Logo from "../../components/common/logo.jsx";
+import { validateOtp } from "../../utils/formValidation.js";
 
 export default function VerifyOtpPage() {
     const [otp, setOtp] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isResending, setIsResending] = useState(false);
+    const [otpError, setOtpError] = useState("");
 
     const navigate = useNavigate();
     const location = useLocation();
-    const queryClient = useQueryClient();
     const email = location.state?.email;
 
     useEffect(() => {
@@ -24,10 +25,17 @@ export default function VerifyOtpPage() {
 
     const handleOtpChange = (event) => {
         setOtp(event.target.value.replace(/\D/g, "").slice(0, 6));
+        setOtpError("");
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        const nextOtpError = validateOtp(otp);
+
+        if (nextOtpError) {
+            setOtpError(nextOtpError);
+            return;
+        }
 
         try {
             setIsSubmitting(true);
@@ -35,7 +43,7 @@ export default function VerifyOtpPage() {
             toast.success("Account verified successfully. Please log in.");
             navigate("/login");
         } catch (error) {
-            toast.error(error.response?.data?.message || "Invalid or expired OTP");
+            toast.error(getApiErrorMessage(error, "Invalid or expired OTP"));
         } finally {
             setIsSubmitting(false);
         }
@@ -47,7 +55,7 @@ export default function VerifyOtpPage() {
             await authApi.resendSignupOTP({ email });
             toast.success("A new OTP has been sent to your email.");
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to resend OTP");
+            toast.error(getApiErrorMessage(error, "Failed to resend OTP"));
         } finally {
             setIsResending(false);
         }
@@ -98,6 +106,7 @@ export default function VerifyOtpPage() {
                                 type="text"
                                 value={otp}
                             />
+                            {otpError && <p className="text-label-xs text-error">{otpError}</p>}
                         </div>
 
                         <button

@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { getApiErrorMessage, isSessionError } from "../api/apiError.js";
 import { enrollmentApi } from "../api/enrollmentApi.js";
+import { queryKeys } from "../api/queryKeys.js";
 
-export const useMyEnrollments = () =>
+export const useMyEnrollments = ({ enabled = true } = {}) =>
     useQuery({
-        queryKey: ["myEnrollments"],
+        queryKey: queryKeys.myEnrollments,
         queryFn: enrollmentApi.getMyEnrollments,
+        enabled,
     });
 
 export const useCancelEnrollment = () => {
@@ -13,14 +16,16 @@ export const useCancelEnrollment = () => {
 
     return useMutation({
         mutationFn: enrollmentApi.cancelEnrollment,
-        onSuccess: () => {
+        onSuccess: (_data, classId) => {
             toast.success("Enrollment cancelled.");
-            queryClient.invalidateQueries({ queryKey: ["myEnrollments"] });
-            queryClient.invalidateQueries({ queryKey: ["classes"] });
-            queryClient.invalidateQueries({ queryKey: ["classDetail"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.myEnrollments });
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(classId) });
         },
         onError: (error) => {
-            toast.error(error.response?.data?.message || "Failed to cancel enrollment.");
+            if (!isSessionError(error)) {
+                toast.error(getApiErrorMessage(error, "Failed to cancel enrollment."));
+            }
         },
     });
 };

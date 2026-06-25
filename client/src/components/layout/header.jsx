@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Logo from '../common/logo.jsx';
 import { User } from "lucide-react";
-import Button from '../common/Button';
+import Button from '../common/Button.jsx';
 import { useAuth } from '../../auth/AuthProvider.jsx';
 
 const navLinkClass = ({ isActive }) => isActive
@@ -14,11 +14,9 @@ export default function Header() {
     const navigate = useNavigate();
     const isAdmin = user?.role === 'admin';
 
-    // State và Ref cho Dropdown
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Xử lý tự động đóng Dropdown khi click ra ngoài
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -38,18 +36,15 @@ export default function Header() {
                     <Logo mobile={true} />
                 </Link>
 
-                {/* Navigation Links */}
                 <nav className="hidden md:flex items-center gap-xl">
                     <NavLink to="/" className={navLinkClass}>Discover</NavLink>
                     <NavLink to="/user/dashboard" className={navLinkClass}>My Classes</NavLink>
                     {isAdmin && <NavLink to="/admin/classes" className={navLinkClass}>Management</NavLink>}
                 </nav>
 
-                {/* User Profile / Login Area */}
                 <div className="relative flex items-center" ref={dropdownRef}>
                     {user ? (
                         <>
-                            {/* Nút User để mở Dropdown */}
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className="flex items-center gap-sm border border-outline-variant hover:bg-surface-container-low transition-colors rounded-full px-sm py-xs focus:outline-none"

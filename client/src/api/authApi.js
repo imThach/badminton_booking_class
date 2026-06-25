@@ -19,9 +19,10 @@ export const authApi = {
   },
   getMe: async () => {
     const response = await api.get("/auth/me");
-    return response.data; // Trả về thông tin user hiện tại
+    return response.data;
   },
   logout: async () => {
     await api.get("/auth/logout");
   }
 };
+

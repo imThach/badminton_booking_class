@@ -5,11 +5,13 @@ import { useAuth } from "../../auth/AuthProvider.jsx";
 import GoogleIcon from "../../components/common/googleicon.jsx";
 import Logo from "../../components/common/logo.jsx";
 import loginBg from "../../assets/public/loginbg.png";
+import { normalizeEmail, validateEmail, validatePassword } from "../../utils/formValidation.js";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const { login, isLoggingIn } = useAuth();
     const location = useLocation();
@@ -23,12 +25,24 @@ export default function LoginPage() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        const normalizedEmail = normalizeEmail(email);
+        const errors = {
+            email: validateEmail(normalizedEmail),
+            password: validatePassword(password),
+        };
+        const nextErrors = Object.fromEntries(Object.entries(errors).filter(([, message]) => message));
+
+        if (Object.keys(nextErrors).length > 0) {
+            setFieldErrors(nextErrors);
+            return;
+        }
 
         try {
-            await login({ email, password });
+            setFieldErrors({});
+            await login({ email: normalizedEmail, password });
             navigate(from, { replace: true });
-        } catch (error) {
-            console.error("Login Error:", error);
+        } catch {
+            // AuthProvider displays the login error toast.
         }
     };
 
@@ -87,12 +101,17 @@ export default function LoginPage() {
                                     className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
                                     id="email"
                                     name="email"
-                                    onChange={(event) => setEmail(event.target.value)}
+                                    onBlur={() => setEmail(normalizeEmail(email))}
+                                    onChange={(event) => {
+                                        setEmail(event.target.value);
+                                        setFieldErrors((current) => ({ ...current, email: "" }));
+                                    }}
                                     placeholder="name@example.com"
                                     required
                                     type="email"
                                     value={email}
                                 />
+                                {fieldErrors.email && <p className="text-label-xs text-error">{fieldErrors.email}</p>}
                             </div>
 
                             <div className="space-y-xs">
@@ -100,9 +119,6 @@ export default function LoginPage() {
                                     <label className="block text-label-sm text-on-surface-variant" htmlFor="password">
                                         Password
                                     </label>
-                                    {/* <a className="text-label-sm font-semibold text-primary transition-all hover:underline" href="#">
-                                        Forgot password?
-                                    </a> */}
                                 </div>
 
                                 <div className="relative">
@@ -110,7 +126,11 @@ export default function LoginPage() {
                                         className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md pr-xl text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
                                         id="password"
                                         name="password"
-                                        onChange={(event) => setPassword(event.target.value)}
+                                        minLength={8}
+                                        onChange={(event) => {
+                                            setPassword(event.target.value);
+                                            setFieldErrors((current) => ({ ...current, password: "" }));
+                                        }}
                                         placeholder="Enter your password"
                                         required
                                         type={showPassword ? "text" : "password"}
@@ -125,6 +145,7 @@ export default function LoginPage() {
                                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
+                                {fieldErrors.password && <p className="text-label-xs text-error">{fieldErrors.password}</p>}
                             </div>
 
                             <label className="flex items-center gap-sm text-label-sm text-on-surface-variant" htmlFor="remember">
@@ -162,7 +183,6 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            {/* incoming... */}
                             <button
                                 className="flex h-12 w-full items-center justify-center gap-sm rounded-xl border border-outline-variant bg-surface-container-lowest px-md font-bold text-on-surface transition-all duration-200 hover:bg-surface-container-low active:scale-[0.98]"
                                 type="button"

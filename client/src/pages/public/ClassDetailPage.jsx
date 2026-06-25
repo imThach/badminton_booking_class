@@ -2,11 +2,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Banknote, Calendar, CircleAlert, Clock, Dumbbell, User, Users } from "lucide-react";
+import { getApiErrorMessage, isSessionError } from "../../api/apiError.js";
 import { classesApi } from "../../api/classesApi.js";
 import { enrollmentApi } from "../../api/enrollmentApi.js";
+import { queryKeys } from "../../api/queryKeys.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
-import Header from "../../components/layout/header.jsx";
-import Footer from "../../components/layout/footer.jsx";
+import Header from "../../components/layout/Header.jsx";
+import Footer from "../../components/layout/Footer.jsx";
 import Button from "../../components/common/Button.jsx";
 import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
 import { useState } from "react";
@@ -75,29 +77,27 @@ export default function ClassDetailPage() {
     const { isAuthenticated, user } = useAuth();
     const [isEnrollConfirmOpen, setIsEnrollConfirmOpen] = useState(false);
 
-    // 1. Lấy dữ liệu chi tiết lớp học từ Backend
     const { data: response, isLoading, isError } = useQuery({
-        queryKey: ["classDetail", id],
+        queryKey: queryKeys.classes.detail(id),
         queryFn: () => classesApi.getById(id),
     });
 
-    // 2. Logic Đăng ký tham gia (Enroll)
     const enrollMutation = useMutation({
         mutationFn: () => enrollmentApi.enrollClass(id),
         onSuccess: () => {
             toast.success("Successfully enrolled in the class!");
-            // Cập nhật lại số lượng học viên
-            queryClient.invalidateQueries({ queryKey: ["classDetail", id] });
-            queryClient.invalidateQueries({ queryKey: ["myEnrollments"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(id) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.myEnrollments });
         },
         onError: (error) => {
-            if (error.response?.status === 401) {
+            if (isSessionError(error)) {
                 toast.error("Please login to enroll in this class.");
                 navigate("/login");
             } else if (error.response?.status === 409) {
                 toast.error("You are already enrolled in this class.");
             } else {
-                toast.error(error.response?.data?.message || "Failed to enroll.");
+                toast.error(getApiErrorMessage(error, "Failed to enroll."));
             }
         }
     });
@@ -132,7 +132,6 @@ export default function ClassDetailPage() {
     const maxStudents = Number(classData.maxStudents ?? 0);
     const isFull = maxStudents > 0 && currentStudents >= maxStudents;
     const isAdmin = user?.role === "admin";
-    const progressPercent = maxStudents > 0 ? Math.min(Math.max(Math.round((currentStudents / maxStudents) * 100), 0), 100) : 0;
 
     const handleEnrollClick = () => {
         if (!isAuthenticated) {
@@ -159,7 +158,6 @@ export default function ClassDetailPage() {
             <Header />
 
             <main className="max-w-container-max mx-auto px-lg py-xl flex-grow w-full">
-                {/* Hero Section */}
                 <section className="relative rounded-xl overflow-hidden mb-xl h-[400px] md:h-[500px]">
                     <div
                         className="bg-cover bg-center w-full h-full"
@@ -184,12 +182,10 @@ export default function ClassDetailPage() {
                 </section>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-xl">
-                    {/* Main Content (Left Column) */}
                     <div className="lg:col-span-8 flex flex-col gap-xl">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-md">
                             <div className="bg-surface-container-lowest p-md rounded-xl border border-outline-variant/30 flex flex-col items-center text-center">
                                 <Banknote className="text-primary mb-xs" size={28} />
-                                {/* TODO: Replace with dynamic data. Currently hardcoded as backend doesn't provide this data. */}
                                 <span className="font-label-xs text-label-xs text-outline uppercase">Price</span>
                                 <span className="font-title-md text-title-md">$25.00</span>
                             </div>
@@ -205,7 +201,6 @@ export default function ClassDetailPage() {
                             </div>
                             <div className="bg-surface-container-lowest p-md rounded-xl border border-outline-variant/30 flex flex-col items-center text-center">
                                 <Dumbbell className="text-primary mb-xs" size={28} />
-                                {/* TODO: Replace with dynamic data. Currently hardcoded as backend doesn't provide 'intensity'. */}
                                 <span className="font-label-xs text-label-xs text-outline uppercase">Intensity</span>
                                 <span className="font-title-md text-title-md">High</span>
                             </div>
@@ -219,14 +214,12 @@ export default function ClassDetailPage() {
                         </section>
                     </div>
 
-                    {/* Sticky Sidebar (Right Column) */}
                     <aside className="lg:col-span-4">
                         <div className="sticky top-28 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-lg p-lg overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>
                             <div className="flex justify-between items-start mb-lg">
                                 <div>
                                     <span className="text-outline font-label-xs text-label-xs uppercase tracking-tight">Investment</span>
-                                    {/* TODO: Replace with dynamic data. Currently hardcoded as backend doesn't provide 'price'. */}
                                     <div className="flex items-baseline gap-xs">
                                         <h3 className="font-display-lg text-display-lg text-on-surface">$25.00</h3><span className="font-body-md text-body-md text-outline">/ session</span>
                                     </div>

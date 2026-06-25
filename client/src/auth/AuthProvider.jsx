@@ -1,7 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { authApi } from "../api/authApi.js";
+import { getApiErrorMessage } from "../api/apiError.js";
+import { AUTH_UNAUTHORIZED_EVENT } from "../api/axiosClient.js";
+import { queryKeys } from "../api/queryKeys.js";
 
 const AuthContext = createContext(null);
 const AUTH_SESSION_KEY = "badminton_booking_has_auth_session";
@@ -12,8 +15,16 @@ export function AuthProvider({ children }) {
     () => localStorage.getItem(AUTH_SESSION_KEY) === "true"
   );
 
+  const clearSession = useCallback(() => {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+    setHasAuthSession(false);
+    queryClient.removeQueries({ queryKey: queryKeys.authUser, exact: true });
+    queryClient.removeQueries({ queryKey: queryKeys.myEnrollments });
+    queryClient.removeQueries({ queryKey: queryKeys.admin.all });
+  }, [queryClient]);
+
   const { data: userResponse, isError: isUserError, isLoading: isLoadingUser } = useQuery({
-    queryKey: ["authUser"],
+    queryKey: queryKeys.authUser,
     queryFn: authApi.getMe,
     enabled: hasAuthSession,
     retry: false,
@@ -22,10 +33,18 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (isUserError) {
-      localStorage.removeItem(AUTH_SESSION_KEY);
-      setHasAuthSession(false);
+      clearSession();
     }
-  }, [isUserError]);
+  }, [clearSession, isUserError]);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      clearSession();
+    };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, [clearSession]);
 
   const user = userResponse?.data?.user || null;
   const isAuthenticated = !!user;
@@ -33,25 +52,25 @@ export function AuthProvider({ children }) {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onMutate: () => {
-      queryClient.removeQueries({ queryKey: ["authUser"], exact: true });
+      queryClient.removeQueries({ queryKey: queryKeys.authUser, exact: true });
     },
     onSuccess: (loginResponse) => {
       localStorage.setItem(AUTH_SESSION_KEY, "true");
-      queryClient.setQueryData(["authUser"], loginResponse);
+      queryClient.setQueryData(queryKeys.authUser, loginResponse);
+      queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
       setHasAuthSession(true);
       toast.success("Login successful!");
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Login failed");
+      toast.error(getApiErrorMessage(error, "Login failed"));
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
     onSettled: () => {
-      localStorage.removeItem(AUTH_SESSION_KEY);
-      setHasAuthSession(false);
-      queryClient.clear();
+      clearSession();
+      queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
     },
   });
 

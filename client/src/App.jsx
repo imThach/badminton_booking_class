@@ -3,10 +3,10 @@ import { Toaster } from "react-hot-toast";
 
 import HomePage from "./pages/public/HomePage.jsx";
 import ClassDetailPage from "./pages/public/ClassDetailPage.jsx";
-import LoginPage from "./pages/auth/login.jsx";
-import RegisterPage from "./pages/auth/register.jsx";
+import LoginPage from "./pages/auth/LoginPage.jsx";
+import RegisterPage from "./pages/auth/RegisterPage.jsx";
 import VerifyOtpPage from "./pages/auth/verifyOtp.jsx";
-import MyClassesPage from "./pages/user/myClasses.jsx";
+import MyClassesPage from "./pages/user/MyClassesPage.jsx";
 import ClassManagement from "./pages/admin/classManagement.jsx";
 import { ProtectedRoute } from "./routes/protectedRoute.jsx";
 

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Search } from "lucide-react";
 import { classesApi } from "../../api/classesApi.js";
-import ClassCard from "../../components/class/classCard.jsx";
+import { queryKeys } from "../../api/queryKeys.js";
+import ClassCard from "../../components/class/ClassCard.jsx";
 
 function ClassCardSkeleton() {
     return (
@@ -48,11 +49,11 @@ export default function ClassListPage() {
     const [level, setLevel] = useState("");
     const debouncedSearchTerm = useDebouncedValue(searchTerm);
     const navigate = useNavigate();
+    const classFilters = { name: debouncedSearchTerm, level };
 
-    // Gọi API lấy dữ liệu thực tế từ Backend
     const { data: classesResponse, isLoading, isError } = useQuery({
-        queryKey: ["classes", debouncedSearchTerm, level],
-        queryFn: () => classesApi.list({ name: debouncedSearchTerm, level }),
+        queryKey: queryKeys.classes.list(classFilters),
+        queryFn: () => classesApi.list(classFilters),
         staleTime: 5000,
     });
 
@@ -62,14 +63,12 @@ export default function ClassListPage() {
         <div className="bg-surface bg-white py-xl">
             <div className="max-w-container-max mx-auto p-lg lg:p-xl font-sans">
 
-                {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-md mb-xl">
                     <div>
                         <h1 className="text-display-lg font-bold text-on-surface mb-xs">Discover Classes</h1>
                         <p className="text-body-md text-on-surface-variant">Level up your game with professional coaching.</p>
                     </div>
 
-                    {/* Filters */}
                     <div className="flex flex-col sm:flex-row gap-sm">
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-md flex items-center pointer-events-none text-on-surface-variant">
@@ -103,7 +102,6 @@ export default function ClassListPage() {
                     </div>
                 </div>
 
-                {/* Loading / Error States */}
                 {isLoading && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
                         {Array.from({ length: 6 }).map((_, index) => (
@@ -114,7 +112,6 @@ export default function ClassListPage() {
                 {isError && <div className="text-center py-xl text-error font-bold">Failed to load classes. Please try again later.</div>}
                 {!isLoading && !isError && classesList.length === 0 && <div className="text-center py-xl text-on-surface-variant">No classes found matching your criteria.</div>}
 
-                {/* Cards Grid */}
                 {!isLoading && !isError && classesList.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
                         {classesList.map((item) => (

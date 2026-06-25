@@ -1,17 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import Header from "../../components/layout/header.jsx";
-import Footer from "../../components/layout/footer.jsx";
+import Header from "../../components/layout/Header.jsx";
+import Footer from "../../components/layout/Footer.jsx";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import Button from "../../components/common/Button.jsx";
-import ClassCard from "../../components/class/classCard.jsx";
+import ClassCard from "../../components/class/ClassCard.jsx";
 import { useCancelEnrollment, useMyEnrollments } from "../../hooks/useEnrollment.js";
 import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
 import { useState } from "react";
 
 export default function MyClassesPage() {
-    const { user } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const navigate = useNavigate();
-    const { data, isError, isLoading } = useMyEnrollments();
+    const { data, isError, isLoading } = useMyEnrollments({ enabled: isAuthenticated });
     const cancelEnrollment = useCancelEnrollment();
     const [cancelTarget, setCancelTarget] = useState(null);
 

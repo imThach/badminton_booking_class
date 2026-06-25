@@ -1,10 +1,11 @@
 import { X } from "lucide-react";
-import Button from "../common/Button";
+import Button from "../common/Button.jsx";
 
 export default function ClassFormModal({
     title,
     description,
     form,
+    errors = {},
     isSaving,
     submitLabel,
     onChange,
@@ -14,6 +15,7 @@ export default function ClassFormModal({
     const inputClassName =
         "mt-xs w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
     const labelClassName = "text-label-sm font-semibold text-on-surface";
+    const fieldError = (field) => errors[field] ? <p className="mt-xs text-label-xs text-error">{errors[field]}</p> : null;
 
     return (
         <div
@@ -48,11 +50,13 @@ export default function ClassFormModal({
                         <label className="sm:col-span-2">
                             <span className={labelClassName}>Class title</span>
                             <input className={inputClassName} name="title" onChange={onChange} placeholder="Morning Badminton Basics" required value={form.title} />
+                            {fieldError("title")}
                         </label>
 
                         <label>
                             <span className={labelClassName}>Coach</span>
                             <input className={inputClassName} name="coachName" onChange={onChange} placeholder="Nguyen Van A" required value={form.coachName} />
+                            {fieldError("coachName")}
                         </label>
 
                         <label>
@@ -62,26 +66,31 @@ export default function ClassFormModal({
                                 <option value="intermediate">Intermediate</option>
                                 <option value="advanced">Advanced</option>
                             </select>
+                            {fieldError("level")}
                         </label>
 
                         <label>
                             <span className={labelClassName}>Start date</span>
                             <input className={inputClassName} name="startDate" onChange={onChange} required type="date" value={form.startDate} />
+                            {fieldError("startDate")}
                         </label>
 
                         <label>
                             <span className={labelClassName}>Max students</span>
                             <input className={inputClassName} min="1" name="maxStudents" onChange={onChange} placeholder="16" required type="number" value={form.maxStudents} />
+                            {fieldError("maxStudents")}
                         </label>
 
                         <label>
                             <span className={labelClassName}>Schedule</span>
                             <input className={inputClassName} name="schedule" onChange={onChange} placeholder="Mon/Wed/Fri 6-7pm" required value={form.schedule} />
+                            {fieldError("schedule")}
                         </label>
 
                         <label>
                             <span className={labelClassName}>Location</span>
                             <input className={inputClassName} name="location" onChange={onChange} placeholder="Court 1, District 1" required value={form.location} />
+                            {fieldError("location")}
                         </label>
 
                         <label className="sm:col-span-2">
@@ -94,6 +103,7 @@ export default function ClassFormModal({
                                 required
                                 value={form.description}
                             />
+                            {fieldError("description")}
                         </label>
                     </div>
 

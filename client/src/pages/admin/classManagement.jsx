@@ -2,14 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Plus } from "lucide-react";
-import { classesApi } from "../../api/classesApi";
+import { getApiErrorMessage, isSessionError } from "../../api/apiError.js";
+import { classesApi } from "../../api/classesApi.js";
+import { queryKeys } from "../../api/queryKeys.js";
 import ClassFormModal from "../../components/admin/ClassFormModal.jsx";
 import ClassManagementTable from "../../components/admin/ClassManagementTable.jsx";
 import StudentsModal from "../../components/admin/StudentsModal.jsx";
-import Button from "../../components/common/Button";
+import Button from "../../components/common/Button.jsx";
 import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
-import Header from "../../components/layout/header.jsx";
-import Footer from "../../components/layout/footer.jsx";
+import Header from "../../components/layout/Header.jsx";
+import Footer from "../../components/layout/Footer.jsx";
+import { hasValidationErrors, validateClassForm } from "../../utils/formValidation.js";
 
 const initialClassForm = {
     title: "",
@@ -44,10 +47,11 @@ export default function ClassManagement() {
     const [editingClass, setEditingClass] = useState(null);
     const [studentsClass, setStudentsClass] = useState(null);
     const [classForm, setClassForm] = useState(initialClassForm);
+    const [classFormErrors, setClassFormErrors] = useState({});
     const [confirm, setConfirm] = useState(null);
 
     const { data, isError, isLoading } = useQuery({
-        queryKey: ["admin", "classes"],
+        queryKey: queryKeys.admin.classes,
         queryFn: () => classesApi.list(),
     });
 
@@ -57,7 +61,7 @@ export default function ClassManagement() {
         isError: isStudentsError,
         isLoading: isStudentsLoading,
     } = useQuery({
-        queryKey: ["admin", "classes", selectedClassId, "students"],
+        queryKey: queryKeys.admin.classStudents(selectedClassId),
         queryFn: () => classesApi.getStudents(selectedClassId),
         enabled: !!selectedClassId,
     });
@@ -81,57 +85,73 @@ export default function ClassManagement() {
         }
     };
 
-    const invalidateClassQueries = () => {
-        queryClient.invalidateQueries({ queryKey: ["admin", "classes"] });
-        queryClient.invalidateQueries({ queryKey: ["classes"] });
+    const invalidateClassQueries = (classId) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.classes });
+        queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+
+        if (classId) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(classId) });
+        }
     };
 
     const deleteMutation = useMutation({
         mutationFn: classesApi.remove,
-        onSuccess: () => {
+        onSuccess: (_data, classId) => {
             toast.success("Class deleted.");
-            invalidateClassQueries();
+            invalidateClassQueries(classId);
         },
         onError: (error) => {
-            toast.error(error.response?.data?.message || "Failed to delete class.");
+            if (!isSessionError(error)) {
+                toast.error(getApiErrorMessage(error, "Failed to delete class."));
+            }
         },
     });
 
     const createMutation = useMutation({
         mutationFn: classesApi.create,
-        onSuccess: () => {
+        onSuccess: (response) => {
             toast.success("Class created.");
             invalidateClassQueries();
+            const classId = response?.data?.class?._id || response?.data?.class?.id;
+            if (classId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(classId) });
+            }
             setClassForm(initialClassForm);
             setIsAddModalOpen(false);
         },
         onError: (error) => {
-            toast.error(error.response?.data?.message || "Failed to create class.");
+            if (!isSessionError(error)) {
+                toast.error(getApiErrorMessage(error, "Failed to create class."));
+            }
         },
     });
 
     const updateMutation = useMutation({
         mutationFn: ({ id, payload }) => classesApi.update(id, payload),
-        onSuccess: () => {
+        onSuccess: (_response, variables) => {
             toast.success("Class updated.");
-            invalidateClassQueries();
+            invalidateClassQueries(variables.id);
             setEditingClass(null);
             setClassForm(initialClassForm);
         },
         onError: (error) => {
-            toast.error(error.response?.data?.message || "Failed to update class.");
+            if (!isSessionError(error)) {
+                toast.error(getApiErrorMessage(error, "Failed to update class."));
+            }
         },
     });
 
     const removeStudentMutation = useMutation({
         mutationFn: classesApi.removeStudent,
-        onSuccess: () => {
+        onSuccess: (_response, variables) => {
             toast.success("Student removed from class.");
-            invalidateClassQueries();
-            queryClient.invalidateQueries({ queryKey: ["admin", "classes", selectedClassId, "students"] });
+            invalidateClassQueries(variables.classId);
+            queryClient.invalidateQueries({ queryKey: queryKeys.admin.classStudents(variables.classId) });
         },
         onError: (error) => {
-            toast.error(error.response?.data?.message || "Failed to remove student.");
+            if (!isSessionError(error)) {
+                toast.error(getApiErrorMessage(error, "Failed to remove student."));
+            }
         },
     });
 
@@ -144,6 +164,7 @@ export default function ClassManagement() {
             ...current,
             [name]: value,
         }));
+        setClassFormErrors((current) => ({ ...current, [name]: "" }));
     };
 
     const handleCloseClassModal = () => {
@@ -151,15 +172,29 @@ export default function ClassManagement() {
         setIsAddModalOpen(false);
         setEditingClass(null);
         setClassForm(initialClassForm);
+        setClassFormErrors({});
     };
 
     const buildPayload = () => ({
-        ...classForm,
+        title: classForm.title.trim(),
+        description: classForm.description.trim(),
+        coachName: classForm.coachName.trim(),
+        level: classForm.level,
+        startDate: classForm.startDate,
+        schedule: classForm.schedule.trim(),
+        location: classForm.location.trim(),
         maxStudents: Number(classForm.maxStudents),
     });
 
+    const validateClassFormBeforeSubmit = ({ requireFutureStartDate = false } = {}) => {
+        const errors = validateClassForm(classForm, { requireFutureStartDate });
+        setClassFormErrors(errors);
+        return !hasValidationErrors(errors);
+    };
+
     const handleCreateClass = (event) => {
         event.preventDefault();
+        if (!validateClassFormBeforeSubmit({ requireFutureStartDate: true })) return;
         const payload = buildPayload();
 
         showConfirm({
@@ -173,10 +208,12 @@ export default function ClassManagement() {
     const handleEditClass = (classItem) => {
         setEditingClass(classItem);
         setClassForm(toClassForm(classItem));
+        setClassFormErrors({});
     };
 
     const handleUpdateClass = (event) => {
         event.preventDefault();
+        if (!validateClassFormBeforeSubmit()) return;
         const payload = buildPayload();
         const id = editingClass?._id || editingClass?.id;
 
@@ -256,6 +293,7 @@ export default function ClassManagement() {
                     title="Add New Class"
                     description="Create a class with schedule, coach, location, and capacity details."
                     form={classForm}
+                    errors={classFormErrors}
                     isSaving={createMutation.isPending}
                     submitLabel="Create Class"
                     onChange={handleFormChange}
@@ -269,6 +307,7 @@ export default function ClassManagement() {
                     title="Edit Class"
                     description="Update schedule, coach, location, capacity, or description."
                     form={classForm}
+                    errors={classFormErrors}
                     isSaving={updateMutation.isPending}
                     submitLabel="Save Changes"
                     onChange={handleFormChange}
