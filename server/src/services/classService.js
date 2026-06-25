@@ -83,6 +83,8 @@ const syncClassCurrentStudents = async (classId) => {
     return updatedClass;
 };
 
+exports.syncClassCurrentStudents = syncClassCurrentStudents;
+
 const pickClassFields = (payload = {}) =>
     ALLOWED_CLASS_FIELDS.reduce((pickedFields, field) => {
         if (payload[field] !== undefined) {

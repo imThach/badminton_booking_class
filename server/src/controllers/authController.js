@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 const catchAsync = require('../utils/catchAsync');
+const sendResponse = require('../utils/sendResponse');
 
 const getCookieOptions = (maxAgeMs) => ({
     expires: new Date(Date.now() + maxAgeMs),
@@ -14,48 +15,33 @@ const sendTokenResponse = (result, statusCode, res) => {
 
     res.cookie('jwt', result.token, cookieOptions);
 
-    res.status(statusCode).json({
-        status: 'success',
-        data: {
-            user: result.user,
-        },
+    sendResponse(res, statusCode, 'Login successful', {
+        user: result.user,
     });
 };
 
 exports.signup = catchAsync(async (req, res) => {
     const result = await authService.signup(req.body);
 
-    res.status(202).json({
-        status: 'success',
-        message: 'OTP has been sent to your email. Verify OTP to create the account.',
-        data: {
-            email: result.email,
-            otpExpiresInMinutes: result.otpExpiresInMinutes,
-        },
+    sendResponse(res, 202, 'OTP has been sent to your email. Verify OTP to create the account.', {
+        email: result.email,
+        otpExpiresInMinutes: result.otpExpiresInMinutes,
     });
 });
 
 exports.verifySignupOTP = catchAsync(async (req, res) => {
     const result = await authService.verifySignupOTP(req.body);
-    res.status(201).json({
-        status: 'success',
-        message: 'Account created successfully. Please log in.',
-        data: {
-            user: result.user,
-        },
+    sendResponse(res, 201, 'Account created successfully. Please log in.', {
+        user: result.user,
     });
 });
 
 exports.resendSignupOTP = catchAsync(async (req, res) => {
     const result = await authService.resendSignupOTP(req.body);
 
-    res.status(200).json({
-        status: 'success',
-        message: 'A new OTP has been sent to your email.',
-        data: {
-            email: result.email,
-            otpExpiresInMinutes: result.otpExpiresInMinutes,
-        },
+    sendResponse(res, 200, 'A new OTP has been sent to your email.', {
+        email: result.email,
+        otpExpiresInMinutes: result.otpExpiresInMinutes,
     });
 });
 
@@ -69,15 +55,13 @@ exports.logout = catchAsync(async (req, res) => {
         await authService.logout(req.user.id, req.token);
     }
 
-    res.cookie('jwt', 'loggedout', getCookieOptions(10 * 1000));
-    res.status(200).json({ status: 'success' });
+    const logoutCookieOptions = { ...getCookieOptions(0), expires: new Date(1) };
+    res.cookie('jwt', 'loggedout', logoutCookieOptions);
+    sendResponse(res, 200, 'You have been logged out successfully.');
 });
 
 exports.getMe = (req, res) => {
-    res.status(200).json({
-        status: 'success',
-        data: {
-            user: req.user,
-        },
+    sendResponse(res, 200, 'Current user retrieved successfully', {
+        user: req.user,
     });
 };

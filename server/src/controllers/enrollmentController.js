@@ -1,5 +1,6 @@
 const enrollmentService = require('../services/enrollmentService');
 const catchAsync = require('../utils/catchAsync');
+const sendResponse = require('../utils/sendResponse');
 
 exports.enrollClass = catchAsync(async (req, res) => {
     const enrollment = await enrollmentService.enrollClass({
@@ -7,11 +8,8 @@ exports.enrollClass = catchAsync(async (req, res) => {
         userId: req.user.id,
     });
 
-    res.status(201).json({
-        status: 'success',
-        data: {
-            enrollment,
-        },
+    sendResponse(res, 201, 'Enrollment created successfully', {
+        enrollment,
     });
 });
 
@@ -21,23 +19,16 @@ exports.cancelEnrollment = catchAsync(async (req, res) => {
         userId: req.user.id,
     });
 
-    res.status(200).json({
-        status: 'success',
-        message: 'Enrollment cancelled successfully',
-        data: {
-            enrollment,
-        },
+    sendResponse(res, 200, 'Enrollment cancelled successfully', {
+        enrollment,
     });
 });
 
 exports.getMyEnrollments = catchAsync(async (req, res) => {
     const enrollments = await enrollmentService.getMyEnrollments(req.user.id);
 
-    res.status(200).json({
-        status: 'success',
+    sendResponse(res, 200, 'Enrollments retrieved successfully', {
+        enrollments,
         results: enrollments.length,
-        data: {
-            enrollments,
-        },
     });
 });

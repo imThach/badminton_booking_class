@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
 const AppError = require('../utils/appError');
+const { syncClassCurrentStudents } = require('./classService');
 
 const assertValidClassId = (classId) => {
     if (!mongoose.isValidObjectId(classId)) {
@@ -26,15 +27,6 @@ const releaseReservedSlot = async (classId) => {
         },
         { $inc: { currentStudents: -1 } },
         { runValidators: true }
-    );
-};
-
-const syncClassCurrentStudents = async (classId) => {
-    const currentStudents = await Enrollment.countDocuments({ class: classId });
-    return Class.findByIdAndUpdate(
-        classId,
-        { currentStudents },
-        { new: true, runValidators: true }
     );
 };
 

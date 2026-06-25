@@ -63,7 +63,10 @@ const sendEmail = async ({ email, subject, message, html }) => {
         html,
     });
 
-    console.log('Email sent:', info.messageId);
+    if (String(process.env.EMAIL_DEBUG || 'false') === 'true') {
+        console.log('Email sent:', info.messageId);
+    }
+
     return info;
 };
 

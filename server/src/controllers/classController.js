@@ -1,5 +1,6 @@
 const classService = require('../services/classService');
 const catchAsync = require('../utils/catchAsync');
+const sendResponse = require('../utils/sendResponse');
 
 exports.getAllClasses = catchAsync(async (req, res) => {
     const result = await classService.listClasses({
@@ -10,24 +11,18 @@ exports.getAllClasses = catchAsync(async (req, res) => {
         upcoming: req.query.upcoming,
     });
 
-    res.status(200).json({
-        status: 'success',
+    sendResponse(res, 200, 'Classes retrieved successfully', {
+        classes: result.classes,
         results: result.classes.length,
         pagination: result.pagination,
-        data: {
-            classes: result.classes,
-        },
     });
 });
 
 exports.getClass = catchAsync(async (req, res) => {
     const classDetail = await classService.getClassById(req.params.id);
 
-    res.status(200).json({
-        status: 'success',
-        data: {
-            class: classDetail,
-        },
+    sendResponse(res, 200, 'Class retrieved successfully', {
+        class: classDetail,
     });
 });
 
@@ -37,11 +32,8 @@ exports.createClass = catchAsync(async (req, res) => {
         userId: req.user.id,
     });
 
-    res.status(201).json({
-        status: 'success',
-        data: {
-            class: classDetail,
-        },
+    sendResponse(res, 201, 'Class created successfully', {
+        class: classDetail,
     });
 });
 
@@ -51,11 +43,8 @@ exports.updateClass = catchAsync(async (req, res) => {
         payload: req.body,
     });
 
-    res.status(200).json({
-        status: 'success',
-        data: {
-            class: classDetail,
-        },
+    sendResponse(res, 200, 'Class updated successfully', {
+        class: classDetail,
     });
 });
 
@@ -68,10 +57,9 @@ exports.deleteClass = catchAsync(async (req, res) => {
 exports.getClassStudents = catchAsync(async (req, res) => {
     const result = await classService.getClassStudents(req.params.id);
 
-    res.status(200).json({
-        status: 'success',
+    sendResponse(res, 200, 'Class students retrieved successfully', {
+        ...result,
         results: result.students.length,
-        data: result,
     });
 });
 
@@ -81,9 +69,5 @@ exports.kickStudentFromClass = catchAsync(async (req, res) => {
         userId: req.params.userId,
     });
 
-    res.status(200).json({
-        status: 'success',
-        message: 'Student removed from class successfully',
-        data: result,
-    });
+    sendResponse(res, 200, 'Student removed from class successfully', result);
 });
