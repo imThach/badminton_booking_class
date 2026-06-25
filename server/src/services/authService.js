@@ -8,6 +8,7 @@ const sendEmail = require('../utils/email');
 const OTP_EXPIRES_IN_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 5;
 const DEFAULT_ACTIVE_TOKEN_LIMIT = 5;
+const DEFAULT_JWT_EXPIRES_IN = '1d';
 
 const getActiveTokenLimit = () =>
     Math.max(Number(process.env.MAX_ACTIVE_TOKENS_PER_USER) || DEFAULT_ACTIVE_TOKEN_LIMIT, 1);
@@ -33,6 +34,21 @@ const assertJwtConfig = () => {
     }
 };
 
+const getJwtExpiresIn = () => {
+    const configuredValue = process.env.JWT_EXPIRES_IN || DEFAULT_JWT_EXPIRES_IN;
+    const normalizedValue = String(configuredValue).trim();
+
+    if (!normalizedValue) {
+        return DEFAULT_JWT_EXPIRES_IN;
+    }
+
+    if (/^\d+$/.test(normalizedValue)) {
+        return `${normalizedValue}d`;
+    }
+
+    return normalizedValue;
+};
+
 // Validate JWT config when the module loads.
 assertJwtConfig();
 
@@ -44,7 +60,7 @@ const signToken = (user) =>
         },
         process.env.JWT_SECRET,
         {
-            expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+            expiresIn: getJwtExpiresIn(),
         }
     );
 

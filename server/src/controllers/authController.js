@@ -1,12 +1,16 @@
 const authService = require('../services/authService');
 const catchAsync = require('../utils/catchAsync');
 
+const getCookieOptions = (maxAgeMs) => ({
+    expires: new Date(Date.now() + maxAgeMs),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+});
+
 const sendTokenResponse = (result, statusCode, res) => {
-    const cookieOptions = {
-        expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 30) * 24 * 60 * 60 * 1000),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-    };
+    const cookieDays = Number(process.env.JWT_COOKIE_EXPIRES_IN) || 30;
+    const cookieOptions = getCookieOptions(cookieDays * 24 * 60 * 60 * 1000);
 
     res.cookie('jwt', result.token, cookieOptions);
 
@@ -65,10 +69,7 @@ exports.logout = catchAsync(async (req, res) => {
         await authService.logout(req.user.id, req.token);
     }
 
-    res.cookie('jwt', 'loggedout', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true,
-    });
+    res.cookie('jwt', 'loggedout', getCookieOptions(10 * 1000));
     res.status(200).json({ status: 'success' });
 });
 
