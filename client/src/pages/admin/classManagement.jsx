@@ -213,7 +213,7 @@ export default function ClassManagement() {
     };
 
     return (
-        <div className="flex min-h-screen flex-col bg-background">
+        <div className="flex min-h-screen flex-col bg-background bg-white">
             <Header />
 
             <main className="mx-auto w-full max-w-container-max flex-grow px-lg py-xl">

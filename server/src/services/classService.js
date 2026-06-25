@@ -31,16 +31,14 @@ const toClassResponse = (classDoc, currentStudentsOverride) => {
 };
 
 const addCurrentStudentsToClasses = async (classes) => {
-    const classIdsNeedingSync = classes
-        .filter((classItem) => classItem.currentStudents === undefined || classItem.currentStudents === 0)
-        .map((classItem) => classItem._id);
+    const classIds = classes.map((classItem) => classItem._id);
 
-    if (classIdsNeedingSync.length === 0) {
+    if (classIds.length === 0) {
         return classes.map(toClassResponse);
     }
 
     const enrollmentCounts = await Enrollment.aggregate([
-        { $match: { class: { $in: classIdsNeedingSync } } },
+        { $match: { class: { $in: classIds } } },
         { $group: { _id: '$class', currentStudents: { $sum: 1 } } },
     ]);
     const countByClassId = new Map(
@@ -48,12 +46,12 @@ const addCurrentStudentsToClasses = async (classes) => {
     );
 
     const classResponses = classes.map((classItem) => {
-        const syncedCount = countByClassId.get(classItem._id.toString());
+        const syncedCount = countByClassId.get(classItem._id.toString()) || 0;
         return toClassResponse(classItem, syncedCount);
     });
 
     await Promise.all(
-        classIdsNeedingSync.map((classId) =>
+        classIds.map((classId) =>
             Class.updateOne(
                 { _id: classId },
                 { $set: { currentStudents: countByClassId.get(classId.toString()) || 0 } }
@@ -65,10 +63,6 @@ const addCurrentStudentsToClasses = async (classes) => {
 };
 
 const addCurrentStudentsToClass = async (classDoc) => {
-    if (classDoc.currentStudents !== undefined && classDoc.currentStudents > 0) {
-        return toClassResponse(classDoc);
-    }
-
     const currentStudents = await Enrollment.countDocuments({ class: classDoc._id });
     await Class.updateOne(
         { _id: classDoc._id },

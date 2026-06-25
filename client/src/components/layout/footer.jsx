@@ -1,6 +1,6 @@
 export default function Footer() {
     return (
-        <footer className="bg-surface-container-highest border-t border-outline-variant/30 ">
+        <footer className="bg-background border-t border-outline-variant/30">
             <div className="w-full py-xl px-lg flex flex-col md:flex-row justify-between items-center max-w-container-max mx-auto gap-lg">
                 <div className="flex flex-col items-center md:items-start gap-sm">
                     <span className="text-title-md font-bold text-primary">SmashCourts</span>

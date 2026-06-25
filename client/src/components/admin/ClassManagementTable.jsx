@@ -41,9 +41,9 @@ export default function ClassManagementTable({
                 <tbody className="divide-y divide-outline-variant">
                     {classes.map((item) => {
                         const id = item._id || item.id;
-                        const enrolled = item.currentStudents || 0;
-                        const capacity = item.maxStudents || 0;
-                        const percent = capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0;
+                        const enrolled = Number(item.currentStudents ?? 0);
+                        const capacity = Number(item.maxStudents ?? 0);
+                        const percent = capacity > 0 ? Math.min(Math.max(Math.round((enrolled / capacity) * 100), 0), 100) : 0;
                         const full = capacity > 0 && enrolled >= capacity;
 
                         return (

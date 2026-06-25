@@ -128,9 +128,11 @@ export default function ClassDetailPage() {
     }
 
     const classData = response.data.class;
-    const isFull = classData.currentStudents >= classData.maxStudents;
+    const currentStudents = Number(classData.currentStudents ?? 0);
+    const maxStudents = Number(classData.maxStudents ?? 0);
+    const isFull = maxStudents > 0 && currentStudents >= maxStudents;
     const isAdmin = user?.role === "admin";
-    const progressPercent = classData.maxStudents > 0 ? Math.round((classData.currentStudents / classData.maxStudents) * 100) : 0;
+    const progressPercent = maxStudents > 0 ? Math.min(Math.max(Math.round((currentStudents / maxStudents) * 100), 0), 100) : 0;
 
     const handleEnrollClick = () => {
         if (!isAuthenticated) {
@@ -230,7 +232,7 @@ export default function ClassDetailPage() {
                                     </div>
                                 </div>
                                 <div className="bg-primary/10 text-primary px-md py-xs rounded-lg text-right">
-                                    <span className="font-label-sm text-label-sm block font-bold">{classData.currentStudents} / {classData.maxStudents}</span>
+                                    <span className="font-label-sm text-label-sm block font-bold">{currentStudents} / {maxStudents}</span>
                                     <span className="font-label-xs text-[10px] uppercase">Enrolled</span>
                                 </div>
                             </div>

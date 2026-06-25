@@ -4,11 +4,11 @@ export default function ClassCard({ item, onView, actionSlot }) {
     // Map dữ liệu từ Backend API (hoặc mock data)
     const title = item.title || item.name;
     const coach = item.coachName || item.coach;
-    const enrolled = item.currentStudents || item.enrolled || 0;
-    const capacity = item.maxStudents || item.maxCapacity || item.capacity || 0;
+    const enrolled = Number(item.currentStudents ?? item.enrolled ?? 0);
+    const capacity = Number(item.maxStudents ?? item.maxCapacity ?? item.capacity ?? 0);
 
     // Tính phần trăm thanh progress
-    const progressPercentage = capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0;
+    const progressPercentage = capacity > 0 ? Math.min(Math.max(Math.round((enrolled / capacity) * 100), 0), 100) : 0;
     // Kiểm tra lớp đã đầy chưa
     const isFull = enrolled >= capacity;
 
