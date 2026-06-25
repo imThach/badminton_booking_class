@@ -1,9 +1,10 @@
 import axios from "axios";
 
 export const AUTH_UNAUTHORIZED_EVENT = "badminton_booking_auth_unauthorized";
+const apiBaseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api/v1" : "http://localhost:3001/api/v1");
 
 export const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api/v1",
+    baseURL: apiBaseUrl,
     withCredentials: true,
     headers: {
         "Content-Type": "application/json",
