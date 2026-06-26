@@ -9,6 +9,8 @@ import Logo from "../../components/common/logo.jsx";
 import registerBg from "../../assets/public/registerbg.png";
 import { normalizeEmail, validateEmail, validatePassword, validateRequired } from "../../utils/formValidation.js";
 
+const PENDING_SIGNUP_EMAIL_KEY = "badminton_booking_pending_signup_email";
+
 export default function RegisterPage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -40,8 +42,11 @@ export default function RegisterPage() {
             setFieldErrors({});
             setIsSubmitting(true);
             await authApi.signup({ name: name.trim(), email: normalizedEmail, password });
+            localStorage.setItem(PENDING_SIGNUP_EMAIL_KEY, normalizedEmail);
             toast.success("OTP has been sent to your email.");
-            navigate("/verify-otp", { state: { email: normalizedEmail } });
+            navigate(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}`, {
+                state: { email: normalizedEmail },
+            });
         } catch (error) {
             toast.error(getApiErrorMessage(error, "Registration failed"));
         } finally {

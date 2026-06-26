@@ -13,6 +13,7 @@ const REQUIRED_CLASS_FIELDS = [
     'maxStudents',
 ];
 const ALLOWED_CLASS_FIELDS = new Set(REQUIRED_CLASS_FIELDS);
+const ALLOWED_UPDATE_META_FIELDS = new Set(['_updatedAt']);
 
 const isBlank = (value) => value === undefined || value === null || String(value).trim() === '';
 
@@ -39,7 +40,7 @@ const validateClassPayload = (payload, { partial = false } = {}) => {
     }
 
     fields.forEach((field) => {
-        if (!ALLOWED_CLASS_FIELDS.has(field)) {
+        if (!ALLOWED_CLASS_FIELDS.has(field) && !(partial && ALLOWED_UPDATE_META_FIELDS.has(field))) {
             throw new AppError(`${field} is not allowed`, 400);
         }
     });

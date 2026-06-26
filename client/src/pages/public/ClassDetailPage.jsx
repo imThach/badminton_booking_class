@@ -11,7 +11,7 @@ import Header from "../../components/layout/Header.jsx";
 import Footer from "../../components/layout/Footer.jsx";
 import Button from "../../components/common/Button.jsx";
 import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 function ClassDetailSkeleton() {
     return (
@@ -76,28 +76,69 @@ export default function ClassDetailPage() {
     const queryClient = useQueryClient();
     const { isAuthenticated, user } = useAuth();
     const [isEnrollConfirmOpen, setIsEnrollConfirmOpen] = useState(false);
+    const [isConfirmingEnroll, setIsConfirmingEnroll] = useState(false);
+    const enrollConfirmInFlightRef = useRef(false);
 
     const { data: response, isLoading, isError } = useQuery({
         queryKey: queryKeys.classes.detail(id),
         queryFn: () => classesApi.getById(id),
     });
 
+    const { data: myEnrollmentsResponse } = useQuery({
+        queryKey: queryKeys.myEnrollments,
+        queryFn: enrollmentApi.getMyEnrollments,
+        enabled: !!isAuthenticated, // Chỉ fetch khi người dùng đã đăng nhập
+    });
+
+    const invalidateEnrollmentQueries = () => {
+        return Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(id) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.classes.all }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.myEnrollments }),
+        ]);
+    };
+
+    const markClassAsFull = () => {
+        queryClient.setQueryData(queryKeys.classes.detail(id), (currentData) => {
+            const currentClass = currentData?.data?.class;
+
+            if (!currentClass) {
+                return currentData;
+            }
+
+            return {
+                ...currentData,
+                data: {
+                    ...currentData.data,
+                    class: {
+                        ...currentClass,
+                        currentStudents: currentClass.maxStudents,
+                    },
+                },
+            };
+        });
+    };
+
     const enrollMutation = useMutation({
         mutationFn: () => enrollmentApi.enrollClass(id),
         onSuccess: () => {
             toast.success("Successfully enrolled in the class!");
-            queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(id) });
-            queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.myEnrollments });
+            return invalidateEnrollmentQueries();
         },
         onError: (error) => {
             if (isSessionError(error)) {
                 toast.error("Please login to enroll in this class.");
                 navigate("/login");
             } else if (error.response?.status === 409) {
-                toast.error("You are already enrolled in this class.");
+                toast.error(getApiErrorMessage(error, "You are already enrolled in this class."));
+                invalidateEnrollmentQueries();
+            } else if (error.response?.data?.message === "This class is full") {
+                markClassAsFull();
+                toast.error("This class is full.");
+                invalidateEnrollmentQueries();
             } else {
                 toast.error(getApiErrorMessage(error, "Failed to enroll."));
+                invalidateEnrollmentQueries();
             }
         }
     });
@@ -132,6 +173,8 @@ export default function ClassDetailPage() {
     const maxStudents = Number(classData.maxStudents ?? 0);
     const isFull = maxStudents > 0 && currentStudents >= maxStudents;
     const isAdmin = user?.role === "admin";
+    const myEnrollments = myEnrollmentsResponse?.data?.enrollments || [];
+    const isEnrolled = myEnrollments.some(enrollment => enrollment.class?._id === id || enrollment.class === id);
 
     const handleEnrollClick = () => {
         if (!isAuthenticated) {
@@ -148,9 +191,21 @@ export default function ClassDetailPage() {
         setIsEnrollConfirmOpen(true);
     };
 
-    const handleConfirmEnroll = () => {
-        setIsEnrollConfirmOpen(false);
-        enrollMutation.mutate();
+    const handleConfirmEnroll = async () => {
+        if (enrollConfirmInFlightRef.current) return;
+
+        enrollConfirmInFlightRef.current = true;
+        setIsConfirmingEnroll(true);
+
+        try {
+            await enrollMutation.mutateAsync();
+        } catch {
+            // Error handling lives in the mutation callbacks.
+        } finally {
+            enrollConfirmInFlightRef.current = false;
+            setIsConfirmingEnroll(false);
+            setIsEnrollConfirmOpen(false);
+        }
     };
 
     return (
@@ -230,8 +285,8 @@ export default function ClassDetailPage() {
                                 </div>
                             </div>
 
-                            <Button className="w-full h-12" onClick={handleEnrollClick} disabled={isAdmin || isFull || enrollMutation.isPending}>
-                                {enrollMutation.isPending ? "Enrolling..." : isAdmin ? "Admins Cannot Enroll" : isFull ? "Class Full" : "Enroll Now"}
+                            <Button className="w-full h-12" onClick={handleEnrollClick} disabled={isAdmin || isFull || isEnrolled || isConfirmingEnroll || enrollMutation.isPending}>
+                                {isConfirmingEnroll || enrollMutation.isPending ? "Enrolling..." : isEnrolled ? "Already Enrolled" : isAdmin ? "Admins Cannot Enroll" : isFull ? "Class Full" : "Enroll Now"}
                             </Button>
                         </div>
                     </aside>
@@ -243,7 +298,7 @@ export default function ClassDetailPage() {
                 title="Enroll in this class?"
                 message={`Reserve your spot in "${classData.title}".`}
                 confirmLabel="Enroll"
-                isLoading={enrollMutation.isPending}
+                isLoading={isConfirmingEnroll || enrollMutation.isPending}
                 onCancel={() => setIsEnrollConfirmOpen(false)}
                 onConfirm={handleConfirmEnroll}
             />

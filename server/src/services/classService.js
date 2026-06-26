@@ -50,24 +50,11 @@ const addCurrentStudentsToClasses = async (classes) => {
         return toClassResponse(classItem, syncedCount);
     });
 
-    await Promise.all(
-        classIds.map((classId) =>
-            Class.updateOne(
-                { _id: classId },
-                { $set: { currentStudents: countByClassId.get(classId.toString()) || 0 } }
-            )
-        )
-    );
-
     return classResponses;
 };
 
 const addCurrentStudentsToClass = async (classDoc) => {
     const currentStudents = await Enrollment.countDocuments({ class: classDoc._id });
-    await Class.updateOne(
-        { _id: classDoc._id },
-        { $set: { currentStudents } }
-    );
 
     return toClassResponse(classDoc, currentStudents);
 };
@@ -155,10 +142,19 @@ exports.createClass = async ({ payload, userId }) => {
 exports.updateClass = async ({ classId, payload }) => {
     assertValidObjectId(classId, 'Invalid class id');
     const classPayload = pickClassFields(payload);
+    const expectedUpdatedAt = payload?._updatedAt ? new Date(payload._updatedAt) : null;
 
     const classDetail = await Class.findById(classId);
     if (!classDetail) {
         throw new AppError('Class not found', 404);
+    }
+
+    if (expectedUpdatedAt && Number.isNaN(expectedUpdatedAt.getTime())) {
+        throw new AppError('_updatedAt must be a valid date', 400);
+    }
+
+    if (expectedUpdatedAt && classDetail.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+        throw new AppError('This class was updated by someone else. Please review the latest data before saving.', 409);
     }
 
     if (classPayload.maxStudents !== undefined) {
@@ -236,7 +232,13 @@ exports.kickStudentFromClass = async ({ classId, userId }) => {
     }).populate('user', 'name email role');
 
     if (!enrollment) {
-        throw new AppError('Student is not enrolled in this class', 404);
+        const updatedClass = await syncClassCurrentStudents(classId);
+
+        return {
+            class: updatedClass || classDetail,
+            removedStudent: null,
+            alreadyRemoved: true,
+        };
     }
 
     const updatedClass = await syncClassCurrentStudents(classId);

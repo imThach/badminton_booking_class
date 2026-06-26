@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
+const EnrollmentCancellation = require('../models/EnrollmentCancellation');
 const AppError = require('../utils/appError');
-const { syncClassCurrentStudents } = require('./classService');
+const CANCEL_ENROLLMENT_GUARD_MS = 2 * 60 * 1000;
 
 const assertValidClassId = (classId) => {
     if (!mongoose.isValidObjectId(classId)) {
@@ -30,18 +31,58 @@ const releaseReservedSlot = async (classId) => {
     );
 };
 
+const createCancellationGuard = async ({ classId, userId, session }) => {
+    await EnrollmentCancellation.findOneAndUpdate(
+        { class: classId, user: userId },
+        { expiresAt: new Date(Date.now() + CANCEL_ENROLLMENT_GUARD_MS) },
+        { upsert: true, setDefaultsOnInsert: true, session }
+    );
+};
+
+const assertNoRecentCancellation = async ({ classId, userId }) => {
+    const cancellation = await EnrollmentCancellation.findOne({
+        class: classId,
+        user: userId,
+        expiresAt: { $gt: new Date() },
+    });
+    if (cancellation) {
+        throw new AppError('Your cancellation is still being processed. Please refresh before enrolling again.', 409);
+    }
+};
+
+const hasRecentCancellation = async ({ classId, userId, session }) => {
+    const cancellation = await EnrollmentCancellation.exists({
+        class: classId,
+        user: userId,
+        expiresAt: { $gt: new Date() },
+    }).session(session);
+
+    return !!cancellation;
+};
+
+const syncClassCurrentStudents = async (classId, session) => {
+    const currentStudents = await Enrollment.countDocuments({ class: classId }).session(session);
+    return Class.findByIdAndUpdate(
+        classId,
+        { currentStudents },
+        { new: true, runValidators: true, session }
+    );
+};
+
 exports.enrollClass = async ({ classId, userId }) => {
     assertValidClassId(classId);
 
+    const now = new Date();
     const classDetail = await Class.findById(classId);
     if (!classDetail) {
         throw new AppError('Class not found', 404);
     }
 
-    if (classDetail.startDate < new Date()) {
+    if (classDetail.startDate <= now) {
         throw new AppError('Cannot enroll in a class that has already started', 400);
     }
 
+    await assertNoRecentCancellation({ classId, userId });
     const existingEnrollment = await Enrollment.findOne({
         class: classId,
         user: userId,
@@ -54,6 +95,7 @@ exports.enrollClass = async ({ classId, userId }) => {
     const reservedClass = await Class.findOneAndUpdate(
         {
             _id: classId,
+            startDate: { $gt: now },
             $expr: { $lt: [{ $ifNull: ['$currentStudents', 0] }, '$maxStudents'] },
         },
         { $inc: { currentStudents: 1 } },
@@ -61,10 +103,19 @@ exports.enrollClass = async ({ classId, userId }) => {
     );
 
     if (!reservedClass) {
+        const latestClass = await Class.findById(classId);
+        if (!latestClass) {
+            throw new AppError('Class not found', 404);
+        }
+
+        if (latestClass?.startDate <= new Date()) {
+            throw new AppError('Cannot enroll in a class that has already started', 400);
+        }
         throw new AppError('This class is full', 400);
     }
 
     try {
+        await assertNoRecentCancellation({ classId, userId });
         const enrollment = await Enrollment.create({
             class: classId,
             user: userId,
@@ -88,22 +139,50 @@ exports.enrollClass = async ({ classId, userId }) => {
 exports.cancelEnrollment = async ({ classId, userId }) => {
     assertValidClassId(classId);
 
-    const enrollment = await Enrollment.findOneAndDelete({
-        class: classId,
-        user: userId,
-    }).populate('class');
+    const session = await mongoose.startSession();
+    let result;
 
-    if (!enrollment) {
-        throw new AppError('Enrollment not found', 404);
+    try {
+        await session.withTransaction(async () => {
+            const enrollment = await Enrollment.findOneAndDelete({
+                class: classId,
+                user: userId,
+            }).session(session).populate('class');
+
+            if (!enrollment) {
+                if (await hasRecentCancellation({ classId, userId, session })) {
+                    throw new AppError('This enrollment no longer exists.', 404);
+                }
+
+                const classDetail = await Class.findById(classId).session(session);
+                if (!classDetail) {
+                    throw new AppError('Class not found', 404);
+                }
+
+                await createCancellationGuard({ classId, userId, session });
+                const updatedClass = await syncClassCurrentStudents(classId, session);
+
+                result = {
+                    class: updatedClass || classDetail,
+                    alreadyRemoved: true,
+                };
+                return;
+            }
+
+            await createCancellationGuard({ classId, userId, session });
+            const updatedClass = await syncClassCurrentStudents(classId, session);
+            const enrollmentResponse = toEnrollmentResponse(enrollment);
+            if (updatedClass) {
+                enrollmentResponse.class = updatedClass;
+            }
+
+            result = enrollmentResponse;
+        });
+    } finally {
+        await session.endSession();
     }
 
-    const updatedClass = await syncClassCurrentStudents(classId);
-    const enrollmentResponse = toEnrollmentResponse(enrollment);
-    if (updatedClass) {
-        enrollmentResponse.class = updatedClass;
-    }
-
-    return enrollmentResponse;
+    return result;
 };
 
 exports.getMyEnrollments = async (userId) => {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { Plus } from "lucide-react";
 import { getApiErrorMessage, isSessionError } from "../../api/apiError.js";
+import { broadcastClassDeleted, removeDeletedClassFromCache } from "../../api/broadcastQueryClient.js";
 import { classesApi } from "../../api/classesApi.js";
 import { queryKeys } from "../../api/queryKeys.js";
 import ClassFormModal from "../../components/admin/ClassFormModal.jsx";
@@ -41,10 +42,22 @@ const toClassForm = (classItem) => ({
     maxStudents: classItem.maxStudents || "",
 });
 
+const CLASS_FORM_FIELDS = Object.keys(initialClassForm);
+
+const buildChangedClassPayload = (nextForm, originalForm) =>
+    CLASS_FORM_FIELDS.reduce((payload, field) => {
+        if (String(nextForm[field] ?? "") !== String(originalForm?.[field] ?? "")) {
+            payload[field] = field === "maxStudents" ? Number(nextForm[field]) : String(nextForm[field]).trim();
+        }
+
+        return payload;
+    }, {});
+
 export default function ClassManagement() {
     const queryClient = useQueryClient();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
+    const [editingClassOriginalForm, setEditingClassOriginalForm] = useState(null);
     const [studentsClass, setStudentsClass] = useState(null);
     const [classForm, setClassForm] = useState(initialClassForm);
     const [classFormErrors, setClassFormErrors] = useState({});
@@ -98,6 +111,8 @@ export default function ClassManagement() {
         mutationFn: classesApi.remove,
         onSuccess: (_data, classId) => {
             toast.success("Class deleted.");
+            removeDeletedClassFromCache(queryClient, classId);
+            broadcastClassDeleted(classId);
             invalidateClassQueries(classId);
         },
         onError: (error) => {
@@ -132,11 +147,35 @@ export default function ClassManagement() {
             toast.success("Class updated.");
             invalidateClassQueries(variables.id);
             setEditingClass(null);
+            setEditingClassOriginalForm(null);
             setClassForm(initialClassForm);
         },
-        onError: (error) => {
+        onError: async (error) => {
             if (!isSessionError(error)) {
                 toast.error(getApiErrorMessage(error, "Failed to update class."));
+
+                if (error.response?.status === 409 || error.response?.status === 400) {
+                    try {
+                        const refreshed = await queryClient.fetchQuery({
+                            queryKey: queryKeys.admin.classes,
+                            queryFn: () => classesApi.list(),
+                        });
+                        const editingClassId = editingClass?._id || editingClass?.id;
+                        const refreshedClass = refreshed?.data?.classes?.find((classItem) => {
+                            const classId = classItem._id || classItem.id;
+                            return classId === editingClassId;
+                        });
+
+                        if (refreshedClass) {
+                            const nextForm = toClassForm(refreshedClass);
+                            setEditingClass(refreshedClass);
+                            setEditingClassOriginalForm(nextForm);
+                            setClassForm(nextForm);
+                        }
+                    } catch {
+                        queryClient.invalidateQueries({ queryKey: queryKeys.admin.classes });
+                    }
+                }
             }
         },
     });
@@ -171,6 +210,7 @@ export default function ClassManagement() {
         if (createMutation.isPending || updateMutation.isPending) return;
         setIsAddModalOpen(false);
         setEditingClass(null);
+        setEditingClassOriginalForm(null);
         setClassForm(initialClassForm);
         setClassFormErrors({});
     };
@@ -206,22 +246,35 @@ export default function ClassManagement() {
     };
 
     const handleEditClass = (classItem) => {
+        const nextForm = toClassForm(classItem);
         setEditingClass(classItem);
-        setClassForm(toClassForm(classItem));
+        setEditingClassOriginalForm(nextForm);
+        setClassForm(nextForm);
         setClassFormErrors({});
     };
 
     const handleUpdateClass = (event) => {
         event.preventDefault();
         if (!validateClassFormBeforeSubmit()) return;
-        const payload = buildPayload();
+        const payload = buildChangedClassPayload(classForm, editingClassOriginalForm);
         const id = editingClass?._id || editingClass?.id;
+
+        if (Object.keys(payload).length === 0) {
+            toast.error("No changes to save.");
+            return;
+        }
 
         showConfirm({
             title: "Save class changes?",
-            message: `Update "${payload.title}" with the new details.`,
+            message: `Update "${classForm.title}" with the new details.`,
             confirmLabel: "Save Changes",
-            onConfirm: () => updateMutation.mutateAsync({ id, payload }),
+            onConfirm: () => updateMutation.mutateAsync({
+                id,
+                payload: {
+                    ...payload,
+                    _updatedAt: editingClass?.updatedAt,
+                },
+            }),
         });
     };
 

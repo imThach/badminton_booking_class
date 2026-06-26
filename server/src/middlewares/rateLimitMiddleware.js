@@ -1,42 +1,65 @@
 const AppError = require('../utils/appError');
+const RateLimitCounter = require('../models/RateLimitCounter');
 
 const createRateLimiter = ({
+    name = 'default',
     windowMs = 15 * 60 * 1000,
     max = 10,
     keyGenerator = (req) => req.ip,
     message = 'Too many requests. Please try again later.',
 } = {}) => {
-    if (process.env.NODE_ENV === 'production' && process.env.RATE_LIMIT_STORE !== 'redis') {
-        console.warn('Using in-memory rate limiter in production. Configure a shared store for multi-instance deployments.');
-    }
-    const hits = new Map();
+    const prefix = `rate-limit:${name}`;
 
-    return (req, res, next) => {
+    const incrementCounter = async (key, resetAt, now) =>
+        RateLimitCounter.findOneAndUpdate(
+            {
+                key,
+                resetAt: { $gt: new Date(now) },
+            },
+            {
+                $inc: { count: 1 },
+                $setOnInsert: { key, resetAt },
+            },
+            {
+                new: true,
+                upsert: true,
+                setDefaultsOnInsert: true,
+            }
+        );
+
+    return async (req, res, next) => {
         const now = Date.now();
-        const key = keyGenerator(req);
-        const record = hits.get(key);
+        const resetAt = new Date(now + windowMs);
+        const key = `${prefix}:${keyGenerator(req)}`;
 
-        if (!record || record.resetAt <= now) {
-            hits.set(key, {
-                count: 1,
-                resetAt: now + windowMs,
-            });
+        try {
+            let record;
+
+            try {
+                record = await incrementCounter(key, resetAt, now);
+            } catch (error) {
+                if (error.code !== 11000) {
+                    throw error;
+                }
+
+                record = await incrementCounter(key, resetAt, now);
+            }
+
+            if (record.count > max) {
+                const retryAfterSeconds = Math.max(Math.ceil((record.resetAt.getTime() - now) / 1000), 1);
+                res.set('Retry-After', String(retryAfterSeconds));
+                return next(new AppError(message, 429));
+            }
+
             return next();
+        } catch (error) {
+            return next(error);
         }
-
-        record.count += 1;
-
-        if (record.count > max) {
-            const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
-            res.set('Retry-After', String(retryAfterSeconds));
-            return next(new AppError(message, 429));
-        }
-
-        return next();
     };
 };
 
 exports.loginRateLimiter = createRateLimiter({
+    name: 'login',
     windowMs: Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
     max: Number(process.env.LOGIN_RATE_LIMIT_MAX) || 10,
     keyGenerator: (req) => {
@@ -47,6 +70,7 @@ exports.loginRateLimiter = createRateLimiter({
 });
 
 exports.signupRateLimiter = createRateLimiter({
+    name: 'signup',
     windowMs: Number(process.env.SIGNUP_RATE_LIMIT_WINDOW_MS) || 60 * 60 * 1000,
     max: Number(process.env.SIGNUP_RATE_LIMIT_MAX) || 5,
     keyGenerator: (req) => {
@@ -57,6 +81,7 @@ exports.signupRateLimiter = createRateLimiter({
 });
 
 exports.otpRateLimiter = createRateLimiter({
+    name: 'otp',
     windowMs: Number(process.env.OTP_RATE_LIMIT_WINDOW_MS) || 10 * 60 * 1000,
     max: Number(process.env.OTP_RATE_LIMIT_MAX) || 5,
     keyGenerator: (req) => {
@@ -67,6 +92,7 @@ exports.otpRateLimiter = createRateLimiter({
 });
 
 exports.otpResendRateLimiter = createRateLimiter({
+    name: 'otp-resend',
     windowMs: Number(process.env.OTP_RESEND_RATE_LIMIT_WINDOW_MS) || 10 * 60 * 1000,
     max: Number(process.env.OTP_RESEND_RATE_LIMIT_MAX) || 3,
     keyGenerator: (req) => {

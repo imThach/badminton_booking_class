@@ -5,32 +5,69 @@ import toast from "react-hot-toast";
 import { getApiErrorMessage } from "../../api/apiError.js";
 import { authApi } from "../../api/authApi.js";
 import Logo from "../../components/common/logo.jsx";
-import { validateOtp } from "../../utils/formValidation.js";
+import { normalizeEmail, validateEmail, validateOtp } from "../../utils/formValidation.js";
+
+const PENDING_SIGNUP_EMAIL_KEY = "badminton_booking_pending_signup_email";
 
 export default function VerifyOtpPage() {
     const [otp, setOtp] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const [otpError, setOtpError] = useState("");
+    const [emailInput, setEmailInput] = useState("");
+    const [emailError, setEmailError] = useState("");
 
     const navigate = useNavigate();
     const location = useLocation();
-    const email = location.state?.email;
+    const queryEmail = new URLSearchParams(location.search).get("email");
+    const email = normalizeEmail(location.state?.email || queryEmail || localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || emailInput);
 
     useEffect(() => {
-        if (!email) {
-            navigate("/register", { replace: true });
+        const persistedEmail = normalizeEmail(location.state?.email || queryEmail || localStorage.getItem(PENDING_SIGNUP_EMAIL_KEY) || "");
+
+        if (persistedEmail) {
+            localStorage.setItem(PENDING_SIGNUP_EMAIL_KEY, persistedEmail);
+            setEmailInput(persistedEmail);
+
+            if (!queryEmail) {
+                navigate(`/verify-otp?email=${encodeURIComponent(persistedEmail)}`, {
+                    replace: true,
+                    state: { email: persistedEmail },
+                });
+            }
         }
-    }, [email, navigate]);
+    }, [location.state, navigate, queryEmail]);
 
     const handleOtpChange = (event) => {
         setOtp(event.target.value.replace(/\D/g, "").slice(0, 6));
         setOtpError("");
     };
 
+    const validateEmailInput = () => {
+        const normalizedEmail = normalizeEmail(emailInput);
+        const nextEmailError = validateEmail(normalizedEmail);
+
+        setEmailInput(normalizedEmail);
+        setEmailError(nextEmailError);
+
+        if (!nextEmailError) {
+            localStorage.setItem(PENDING_SIGNUP_EMAIL_KEY, normalizedEmail);
+            navigate(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}`, {
+                replace: true,
+                state: { email: normalizedEmail },
+            });
+        }
+
+        return !nextEmailError;
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         const nextOtpError = validateOtp(otp);
+
+        if (!validateEmailInput()) {
+            return;
+        }
 
         if (nextOtpError) {
             setOtpError(nextOtpError);
@@ -40,6 +77,7 @@ export default function VerifyOtpPage() {
         try {
             setIsSubmitting(true);
             await authApi.verifySignupOTP({ email, otp });
+            localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
             toast.success("Account verified successfully. Please log in.");
             navigate("/login");
         } catch (error) {
@@ -50,6 +88,10 @@ export default function VerifyOtpPage() {
     };
 
     const handleResendOtp = async () => {
+        if (!validateEmailInput()) {
+            return;
+        }
+
         try {
             setIsResending(true);
             await authApi.resendSignupOTP({ email });
@@ -60,10 +102,6 @@ export default function VerifyOtpPage() {
             setIsResending(false);
         }
     };
-
-    if (!email) {
-        return null;
-    }
 
     return (
         <main className="flex min-h-screen items-center justify-center bg-background px-lg py-xl">
@@ -84,11 +122,38 @@ export default function VerifyOtpPage() {
                         Check your inbox
                     </h1>
                     <p className="mb-xl text-body-md text-on-surface-variant">
-                        We sent a 6-digit code to{" "}
-                        <strong className="font-semibold text-on-surface">{email}</strong>.
+                        {email ? (
+                            <>
+                                We sent a 6-digit code to{" "}
+                                <strong className="font-semibold text-on-surface">{email}</strong>.
+                            </>
+                        ) : (
+                            "Enter the email address you used to create your account."
+                        )}
                     </p>
 
                     <form className="space-y-md" onSubmit={handleSubmit}>
+                        <div className="space-y-xs text-left">
+                            <label className="block text-label-sm text-on-surface-variant" htmlFor="email">
+                                Email address
+                            </label>
+                            <input
+                                className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
+                                id="email"
+                                name="email"
+                                onBlur={validateEmailInput}
+                                onChange={(event) => {
+                                    setEmailInput(event.target.value);
+                                    setEmailError("");
+                                }}
+                                placeholder="name@example.com"
+                                required
+                                type="email"
+                                value={emailInput}
+                            />
+                            {emailError && <p className="text-label-xs text-error">{emailError}</p>}
+                        </div>
+
                         <div className="space-y-xs text-left">
                             <label className="block text-label-sm text-on-surface-variant" htmlFor="otp">
                                 Verification code

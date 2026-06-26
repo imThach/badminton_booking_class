@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const PendingRegistration = require('../models/PendingRegistration');
 const AppError = require('../utils/appError');
-const sendEmail = require('../utils/email');
+const { sendSignupOTP } = require('../emails/signupOtpEmail');
 
 const OTP_EXPIRES_IN_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 5;
@@ -82,21 +82,6 @@ exports.sanitizeUser = sanitizeUser;
 
 const createOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-const sendSignupOTP = async ({ email, name, otp }) => {
-    await sendEmail({
-        email,
-        subject: 'Badminton Booking - OTP verification',
-        message: [
-            `Hello ${name},`,
-            '',
-            `your OTP for signing up is: ${otp}`,
-            `This OTP will expire in ${OTP_EXPIRES_IN_MINUTES} minutes.`,
-            'If you did not request this OTP, please ignore this email.',
-            'Thank you,',
-        ].join('\n'),
-    });
-};
-
 exports.signup = async ({ name, email, password, role, adminInviteCode }) => {
     if (!name || !email || !password) {
         throw new AppError('Please provide name, email and password', 400);
@@ -136,7 +121,12 @@ exports.signup = async ({ name, email, password, role, adminInviteCode }) => {
     }
 
     try {
-        await sendSignupOTP({ email: normalizedEmail, name, otp });
+        await sendSignupOTP({
+            email: normalizedEmail,
+            name,
+            otp,
+            expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
+        });
     } catch (error) {
         await PendingRegistration.deleteOne({ email: normalizedEmail });
         throw new AppError(`Could not send OTP email: ${error.message}`, 500);
@@ -210,13 +200,22 @@ exports.resendSignupOTP = async ({ email }) => {
         throw new AppError('No pending registration found for this email', 404);
     }
 
+    if (pending.attempts >= MAX_OTP_ATTEMPTS) {
+        await PendingRegistration.deleteOne({ _id: pending._id });
+        throw new AppError('Too many invalid OTP attempts. Please sign up again', 429);
+    }
+
     const otp = createOTP();
     pending.otpHash = PendingRegistration.hashOTP(otp);
     pending.otpExpires = new Date(Date.now() + OTP_EXPIRES_IN_MINUTES * 60 * 1000);
-    pending.attempts = 0;
     await pending.save();
 
-    await sendSignupOTP({ email: pending.email, name: pending.name, otp });
+    await sendSignupOTP({
+        email: pending.email,
+        name: pending.name,
+        otp,
+        expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
+    });
 
     return {
         email: pending.email,

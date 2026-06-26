@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { authApi } from "../api/authApi.js";
 import { getApiErrorMessage } from "../api/apiError.js";
-import { AUTH_UNAUTHORIZED_EVENT } from "../api/axiosClient.js";
+import { AUTH_UNAUTHORIZED_EVENT, AUTH_UNAUTHORIZED_MESSAGE } from "../api/axiosClient.js";
 import { queryKeys } from "../api/queryKeys.js";
 
 const AuthContext = createContext(null);
 const AUTH_SESSION_KEY = "badminton_booking_has_auth_session";
+const AUTH_SESSION_EXPIRED_TOAST_ID = "auth-session-expired";
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
@@ -38,7 +39,10 @@ export function AuthProvider({ children }) {
   }, [clearSession, isUserError]);
 
   useEffect(() => {
-    const handleUnauthorized = () => {
+    const handleUnauthorized = (event) => {
+      toast.error(event.detail?.message || AUTH_UNAUTHORIZED_MESSAGE, {
+        id: AUTH_SESSION_EXPIRED_TOAST_ID,
+      });
       clearSession();
     };
 

@@ -6,7 +6,7 @@ import Button from "../../components/common/Button.jsx";
 import ClassCard from "../../components/class/ClassCard.jsx";
 import { useCancelEnrollment, useMyEnrollments } from "../../hooks/useEnrollment.js";
 import ConfirmDialog from "../../components/common/ConfirmDialog.jsx";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function MyClassesPage() {
     const { isAuthenticated, user } = useAuth();
@@ -14,14 +14,26 @@ export default function MyClassesPage() {
     const { data, isError, isLoading } = useMyEnrollments({ enabled: isAuthenticated });
     const cancelEnrollment = useCancelEnrollment();
     const [cancelTarget, setCancelTarget] = useState(null);
+    const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+    const cancelConfirmInFlightRef = useRef(false);
 
     const enrollments = data?.data?.enrollments || [];
 
-    const handleConfirmCancel = () => {
-        if (!cancelTarget?.classId) return;
-        cancelEnrollment.mutate(cancelTarget.classId, {
-            onSettled: () => setCancelTarget(null),
-        });
+    const handleConfirmCancel = async () => {
+        if (!cancelTarget?.classId || cancelConfirmInFlightRef.current) return;
+
+        cancelConfirmInFlightRef.current = true;
+        setIsConfirmingCancel(true);
+
+        try {
+            await cancelEnrollment.mutateAsync(cancelTarget.classId);
+        } catch {
+            // Error handling lives in useCancelEnrollment.
+        } finally {
+            cancelConfirmInFlightRef.current = false;
+            setIsConfirmingCancel(false);
+            setCancelTarget(null);
+        }
     };
 
     return (
@@ -96,7 +108,7 @@ export default function MyClassesPage() {
                                                     </Button>
                                                     <Button
                                                         className="flex-1 px-md py-sm"
-                                                        disabled={cancelEnrollment.isPending}
+                                                        disabled={isConfirmingCancel || cancelEnrollment.isPending}
                                                         onClick={() => setCancelTarget({ classId, title: classItem.title })}
                                                     >
                                                         Cancel
@@ -117,7 +129,7 @@ export default function MyClassesPage() {
                 message={`Leave "${cancelTarget?.title || "this class"}"? Your spot will be released.`}
                 confirmLabel="Cancel Enrollment"
                 variant="danger"
-                isLoading={cancelEnrollment.isPending}
+                isLoading={isConfirmingCancel || cancelEnrollment.isPending}
                 onCancel={() => setCancelTarget(null)}
                 onConfirm={handleConfirmCancel}
             />
