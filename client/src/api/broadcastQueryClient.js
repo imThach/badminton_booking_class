@@ -1,4 +1,5 @@
 const QUERY_BROADCAST_CHANNEL = "badminton-booking-react-query";
+const CLASS_DELETED_STORAGE_KEY = "badminton-booking-class-deleted";
 const tabId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 let queryBroadcastChannel = null;
 
@@ -13,11 +14,16 @@ const removeClassFromCachedList = (currentData, classId) => {
         return currentData;
     }
 
+    const nextClasses = classes.filter((classItem) => (classItem._id || classItem.id) !== classId);
+    if (nextClasses.length === classes.length) {
+        return currentData;
+    }
+
     return {
         ...currentData,
         data: {
             ...currentData.data,
-            classes: classes.filter((classItem) => (classItem._id || classItem.id) !== classId),
+            classes: nextClasses,
             results: Math.max(Number(currentData.data.results ?? classes.length) - 1, 0),
         },
     };
@@ -34,32 +40,45 @@ export const removeDeletedClassFromCache = (queryClient, classId) => {
 };
 
 export const broadcastClassDeleted = (classId) => {
-    if (typeof window === "undefined" || !("BroadcastChannel" in window)) {
+    if (typeof window === "undefined") {
         return;
     }
 
-    const channel = queryBroadcastChannel || new BroadcastChannel(QUERY_BROADCAST_CHANNEL);
-    channel.postMessage({
+    const message = {
         type: "classDeleted",
         classId,
         source: tabId,
-    });
+        sentAt: Date.now(),
+    };
 
-    if (!queryBroadcastChannel) {
-        channel.close();
+    if ("BroadcastChannel" in window) {
+        const channel = queryBroadcastChannel || new BroadcastChannel(QUERY_BROADCAST_CHANNEL);
+        channel.postMessage(message);
+
+        if (!queryBroadcastChannel) {
+            channel.close();
+        }
+    }
+
+    try {
+        localStorage.setItem(CLASS_DELETED_STORAGE_KEY, JSON.stringify(message));
+    } catch {
+        // Ignore storage failures; BroadcastChannel already handled the primary path.
     }
 };
 
 export function broadcastQueryClient(queryClient) {
-    if (typeof window === "undefined" || !("BroadcastChannel" in window)) {
+    if (typeof window === "undefined") {
         return () => {};
     }
 
-    const channel = new BroadcastChannel(QUERY_BROADCAST_CHANNEL);
+    const channel = "BroadcastChannel" in window ? new BroadcastChannel(QUERY_BROADCAST_CHANNEL) : null;
     queryBroadcastChannel = channel;
     let isApplyingRemoteEvent = false;
 
     const postMessage = (message) => {
+        if (!channel) return;
+
         channel.postMessage({
             ...message,
             source: tabId,
@@ -103,9 +122,15 @@ export function broadcastQueryClient(queryClient) {
         }
     });
 
-    channel.onmessage = (event) => {
-        const message = event.data;
+    const applyClassDeleted = (classId) => {
+        removeDeletedClassFromCache(queryClient, classId);
+        queryClient.invalidateQueries({
+            queryKey: ["classes"],
+            refetchType: "active",
+        });
+    };
 
+    const handleMessage = (message) => {
         if (!message || message.source === tabId) {
             return;
         }
@@ -114,11 +139,7 @@ export function broadcastQueryClient(queryClient) {
 
         try {
             if (message.type === "classDeleted" && message.classId) {
-                removeDeletedClassFromCache(queryClient, message.classId);
-                queryClient.invalidateQueries({
-                    queryKey: ["classes"],
-                    refetchType: "active",
-                });
+                applyClassDeleted(message.classId);
                 return;
             }
 
@@ -153,9 +174,28 @@ export function broadcastQueryClient(queryClient) {
         }
     };
 
+    if (channel) {
+        channel.onmessage = (event) => handleMessage(event.data);
+    }
+
+    const handleStorage = (event) => {
+        if (event.key !== CLASS_DELETED_STORAGE_KEY || !event.newValue) {
+            return;
+        }
+
+        try {
+            handleMessage(JSON.parse(event.newValue));
+        } catch {
+            // Ignore malformed storage payloads from old tabs or manual edits.
+        }
+    };
+
+    window.addEventListener("storage", handleStorage);
+
     return () => {
         unsubscribe();
-        channel.close();
+        window.removeEventListener("storage", handleStorage);
+        channel?.close();
         if (queryBroadcastChannel === channel) {
             queryBroadcastChannel = null;
         }

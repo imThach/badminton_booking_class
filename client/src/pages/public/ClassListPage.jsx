@@ -55,6 +55,8 @@ export default function ClassListPage() {
         queryKey: queryKeys.classes.list(classFilters),
         queryFn: () => classesApi.list(classFilters),
         staleTime: 5000,
+        refetchInterval: 5000,
+        refetchIntervalInBackground: true,
     });
 
     const classesList = classesResponse?.data?.classes || [];
