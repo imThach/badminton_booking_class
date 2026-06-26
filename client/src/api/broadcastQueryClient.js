@@ -1,5 +1,6 @@
 const QUERY_BROADCAST_CHANNEL = "badminton-booking-react-query";
 const CLASS_DELETED_STORAGE_KEY = "badminton-booking-class-deleted";
+const CLASS_CREATED_STORAGE_KEY = "badminton-booking-class-created";
 const tabId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 let queryBroadcastChannel = null;
 
@@ -39,17 +40,10 @@ export const removeDeletedClassFromCache = (queryClient, classId) => {
     queryClient.removeQueries({ queryKey: ["classes", "detail", classId], exact: true });
 };
 
-export const broadcastClassDeleted = (classId) => {
+const publishMessage = (storageKey, message) => {
     if (typeof window === "undefined") {
         return;
     }
-
-    const message = {
-        type: "classDeleted",
-        classId,
-        source: tabId,
-        sentAt: Date.now(),
-    };
 
     if ("BroadcastChannel" in window) {
         const channel = queryBroadcastChannel || new BroadcastChannel(QUERY_BROADCAST_CHANNEL);
@@ -61,10 +55,28 @@ export const broadcastClassDeleted = (classId) => {
     }
 
     try {
-        localStorage.setItem(CLASS_DELETED_STORAGE_KEY, JSON.stringify(message));
+        localStorage.setItem(storageKey, JSON.stringify(message));
     } catch {
         // Ignore storage failures; BroadcastChannel already handled the primary path.
     }
+};
+
+export const broadcastClassDeleted = (classId) => {
+    publishMessage(CLASS_DELETED_STORAGE_KEY, {
+        type: "classDeleted",
+        classId,
+        source: tabId,
+        sentAt: Date.now(),
+    });
+};
+
+export const broadcastClassCreated = (classId) => {
+    publishMessage(CLASS_CREATED_STORAGE_KEY, {
+        type: "classCreated",
+        classId,
+        source: tabId,
+        sentAt: Date.now(),
+    });
 };
 
 export function broadcastQueryClient(queryClient) {
@@ -143,6 +155,14 @@ export function broadcastQueryClient(queryClient) {
                 return;
             }
 
+            if (message.type === "classCreated") {
+                queryClient.invalidateQueries({
+                    queryKey: ["classes"],
+                    refetchType: "active",
+                });
+                return;
+            }
+
             if (!Array.isArray(message.queryKey)) {
                 return;
             }
@@ -179,7 +199,7 @@ export function broadcastQueryClient(queryClient) {
     }
 
     const handleStorage = (event) => {
-        if (event.key !== CLASS_DELETED_STORAGE_KEY || !event.newValue) {
+        if (![CLASS_DELETED_STORAGE_KEY, CLASS_CREATED_STORAGE_KEY].includes(event.key) || !event.newValue) {
             return;
         }
 

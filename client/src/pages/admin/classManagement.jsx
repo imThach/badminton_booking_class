@@ -3,7 +3,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { Plus } from "lucide-react";
 import { getApiErrorMessage, isSessionError } from "../../api/apiError.js";
-import { broadcastClassDeleted, removeDeletedClassFromCache } from "../../api/broadcastQueryClient.js";
+import { broadcastClassCreated, broadcastClassDeleted, removeDeletedClassFromCache } from "../../api/broadcastQueryClient.js";
 import { classesApi } from "../../api/classesApi.js";
 import { queryKeys } from "../../api/queryKeys.js";
 import ClassFormModal from "../../components/admin/ClassFormModal.jsx";
@@ -129,6 +129,7 @@ export default function ClassManagement() {
             invalidateClassQueries();
             const classId = response?.data?.class?._id || response?.data?.class?.id;
             if (classId) {
+                broadcastClassCreated(classId);
                 queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(classId) });
             }
             setClassForm(initialClassForm);
