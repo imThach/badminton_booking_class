@@ -9,6 +9,12 @@ const navLinkClass = ({ isActive }) => isActive
     ? 'text-primary border-b-2 border-primary pb-1 font-bold'
     : 'text-on-surface-variant font-medium hover:text-primary transition-colors';
 
+const dropdownNavLinkClass = ({ isActive }) =>
+    `block rounded-lg px-md py-sm text-body-md font-medium transition-colors ${isActive
+        ? 'bg-primary/10 text-primary'
+        : 'text-on-surface hover:bg-surface-container-low'
+    }`;
+
 export default function Header() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -36,7 +42,7 @@ export default function Header() {
                     <Logo mobile={true} />
                 </Link>
 
-                <nav className="hidden md:flex items-center gap-xl">
+                <nav className="hidden lg:flex items-center gap-xl">
                     <NavLink to="/" className={navLinkClass}>Discover</NavLink>
                     <NavLink to="/user/dashboard" className={navLinkClass}>My Classes</NavLink>
                     {isAdmin && <NavLink to="/admin/classes" className={navLinkClass}>Management</NavLink>}
@@ -73,6 +79,20 @@ export default function Header() {
                                             {user.email || 'user@example.com'}
                                         </p>
                                     </div>
+
+                                    <nav className="border-b border-outline-variant/30 pb-xs mb-xs lg:hidden" aria-label="Account navigation">
+                                        <NavLink className={dropdownNavLinkClass} onClick={() => setIsDropdownOpen(false)} to="/">
+                                            Discover
+                                        </NavLink>
+                                        <NavLink className={dropdownNavLinkClass} onClick={() => setIsDropdownOpen(false)} to="/user/dashboard">
+                                            My Classes
+                                        </NavLink>
+                                        {isAdmin && (
+                                            <NavLink className={dropdownNavLinkClass} onClick={() => setIsDropdownOpen(false)} to="/admin/classes">
+                                                Management
+                                            </NavLink>
+                                        )}
+                                    </nav>
 
                                     <button
                                         onClick={() => {
