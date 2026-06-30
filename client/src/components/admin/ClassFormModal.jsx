@@ -7,6 +7,7 @@ export default function ClassFormModal({
     form,
     errors = {},
     isSaving,
+    minStartDate,
     submitLabel,
     onChange,
     onClose,
@@ -71,7 +72,15 @@ export default function ClassFormModal({
 
                         <label>
                             <span className={labelClassName}>Start date</span>
-                            <input className={inputClassName} name="startDate" onChange={onChange} required type="date" value={form.startDate} />
+                            <input
+                                className={inputClassName}
+                                min={minStartDate}
+                                name="startDate"
+                                onChange={onChange}
+                                required
+                                type="date"
+                                value={form.startDate}
+                            />
                             {fieldError("startDate")}
                         </label>
 

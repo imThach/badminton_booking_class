@@ -17,8 +17,8 @@ export const authApi = {
     const response = await api.post("/auth/resend-signup-otp", data);
     return response.data;
   },
-  getMe: async () => {
-    const response = await api.get("/auth/me");
+  getMe: async ({ signal } = {}) => {
+    const response = await api.get("/auth/me", { signal });
     return response.data;
   },
   logout: async () => {

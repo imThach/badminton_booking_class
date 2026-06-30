@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { authApi } from "../api/authApi.js";
@@ -12,6 +12,7 @@ const AUTH_SESSION_EXPIRED_TOAST_ID = "auth-session-expired";
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
+  const loginInFlightRef = useRef(false);
   const [hasAuthSession, setHasAuthSession] = useState(
     () => localStorage.getItem(AUTH_SESSION_KEY) === "true"
   );
@@ -40,6 +41,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleUnauthorized = (event) => {
+      if (loginInFlightRef.current) {
+        return;
+      }
+
       toast.error(event.detail?.message || AUTH_UNAUTHORIZED_MESSAGE, {
         id: AUTH_SESSION_EXPIRED_TOAST_ID,
       });
@@ -56,7 +61,8 @@ export function AuthProvider({ children }) {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onMutate: () => {
-      queryClient.removeQueries({ queryKey: queryKeys.authUser, exact: true });
+      loginInFlightRef.current = true;
+      clearSession();
     },
     onSuccess: (loginResponse) => {
       localStorage.setItem(AUTH_SESSION_KEY, "true");
@@ -67,6 +73,9 @@ export function AuthProvider({ children }) {
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error, "Login failed"));
+    },
+    onSettled: () => {
+      loginInFlightRef.current = false;
     },
   });
 

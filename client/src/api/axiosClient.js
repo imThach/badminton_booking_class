@@ -4,6 +4,11 @@ export const AUTH_UNAUTHORIZED_EVENT = "badminton_booking_auth_unauthorized";
 export const AUTH_UNAUTHORIZED_MESSAGE = "Your session has expired. Please log in again.";
 const apiBaseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api/v1" : "http://localhost:3001/api/v1");
 
+const isLoginRequest = (url = "") => {
+    const path = String(url).split("?")[0].replace(/\/+$/, "");
+    return path.endsWith("/auth/login");
+};
+
 export const api = axios.create({
     baseURL: apiBaseUrl,
     withCredentials: true,
@@ -15,7 +20,7 @@ export const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401 && error.config?.url !== "/auth/login") {
+        if (error.response?.status === 401 && !isLoginRequest(error.config?.url)) {
             const message = error.response?.data?.message || AUTH_UNAUTHORIZED_MESSAGE;
 
             window.dispatchEvent(

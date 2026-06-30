@@ -31,6 +31,12 @@ const toDateInputValue = (value) => {
     return new Date(value).toISOString().slice(0, 10);
 };
 
+const getTodayDateInputValue = () => {
+    const today = new Date();
+    const timezoneOffset = today.getTimezoneOffset() * 60_000;
+    return new Date(today.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
 const toClassForm = (classItem) => ({
     title: classItem.title || "",
     description: classItem.description || "",
@@ -349,6 +355,7 @@ export default function ClassManagement() {
                     form={classForm}
                     errors={classFormErrors}
                     isSaving={createMutation.isPending}
+                    minStartDate={getTodayDateInputValue()}
                     submitLabel="Create Class"
                     onChange={handleFormChange}
                     onClose={handleCloseClassModal}
