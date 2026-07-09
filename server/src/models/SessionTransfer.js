@@ -1,0 +1,3 @@
+const mongoose=require('mongoose');
+const schema=new mongoose.Schema({user:{type:mongoose.Schema.ObjectId,ref:'User',required:true},fromSession:{type:mongoose.Schema.ObjectId,ref:'ClassSession',required:true},toSession:{type:mongoose.Schema.ObjectId,ref:'ClassSession',default:null},targetClass:{type:mongoose.Schema.ObjectId,ref:'Class'},targetStartDate:Date,targetEndDate:Date,reason:{type:String,trim:true,required:true,minlength:10,maxlength:500},status:{type:String,enum:['pending','approved','rejected','cancelled'],default:'pending',index:true},processedBy:{type:mongoose.Schema.ObjectId,ref:'User'},processedAt:Date},{timestamps:true});
+schema.index({user:1,fromSession:1,status:1});module.exports=mongoose.model('SessionTransfer',schema);

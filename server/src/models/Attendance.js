@@ -1,0 +1,3 @@
+const mongoose = require('mongoose');
+const schema = new mongoose.Schema({ session: { type: mongoose.Schema.ObjectId, ref: 'ClassSession', required: true }, user: { type: mongoose.Schema.ObjectId, ref: 'User', required: true }, status: { type: String, enum: ['present','absent','late','excused'], required: true }, note: { type: String, trim: true, maxlength: 500 }, markedBy: { type: mongoose.Schema.ObjectId, ref: 'User', required: true }, markedAt: { type: Date, default: Date.now } });
+schema.index({ session: 1, user: 1 }, { unique: true }); module.exports = mongoose.model('Attendance', schema);

@@ -26,8 +26,9 @@ app.use(
     cors({
         origin: allowedOrigins,
         credentials: true,
-        methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
+        exposedHeaders: ['Retry-After', 'RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
     })
 );
 app.use(express.json({ limit: '10kb' }));
@@ -58,6 +59,10 @@ const normalizeError = (err) => {
 
     if (err.type === 'entity.parse.failed') {
         return new AppError('Invalid JSON request body', 400);
+    }
+
+    if (err.name === 'MulterError') {
+        return new AppError(err.code === 'LIMIT_FILE_SIZE' ? 'Avatar must be 3 MB or smaller' : 'Invalid avatar upload', 400);
     }
 
     if (err.name === 'ValidationError') {

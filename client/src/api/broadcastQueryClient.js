@@ -1,6 +1,7 @@
 const QUERY_BROADCAST_CHANNEL = "badminton-booking-react-query";
 const CLASS_DELETED_STORAGE_KEY = "badminton-booking-class-deleted";
 const CLASS_CREATED_STORAGE_KEY = "badminton-booking-class-created";
+const QUERY_INVALIDATED_STORAGE_KEY = "badminton-booking-query-invalidated";
 const tabId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 let queryBroadcastChannel = null;
 
@@ -74,6 +75,20 @@ export const broadcastClassCreated = (classId) => {
     publishMessage(CLASS_CREATED_STORAGE_KEY, {
         type: "classCreated",
         classId,
+        source: tabId,
+        sentAt: Date.now(),
+    });
+};
+
+export const broadcastInvalidateQueries = (queryKeys) => {
+    const keys = (Array.isArray(queryKeys?.[0]) ? queryKeys : [queryKeys])
+        .filter((queryKey) => Array.isArray(queryKey));
+
+    if (!keys.length) return;
+
+    publishMessage(QUERY_INVALIDATED_STORAGE_KEY, {
+        type: "invalidateMany",
+        queryKeys: keys,
         source: tabId,
         sentAt: Date.now(),
     });
@@ -163,6 +178,18 @@ export function broadcastQueryClient(queryClient) {
                 return;
             }
 
+            if (message.type === "invalidateMany" && Array.isArray(message.queryKeys)) {
+                message.queryKeys
+                    .filter((queryKey) => Array.isArray(queryKey))
+                    .forEach((queryKey) => {
+                        queryClient.invalidateQueries({
+                            queryKey,
+                            refetchType: "active",
+                        });
+                    });
+                return;
+            }
+
             if (!Array.isArray(message.queryKey)) {
                 return;
             }
@@ -199,7 +226,7 @@ export function broadcastQueryClient(queryClient) {
     }
 
     const handleStorage = (event) => {
-        if (![CLASS_DELETED_STORAGE_KEY, CLASS_CREATED_STORAGE_KEY].includes(event.key) || !event.newValue) {
+        if (![CLASS_DELETED_STORAGE_KEY, CLASS_CREATED_STORAGE_KEY, QUERY_INVALIDATED_STORAGE_KEY].includes(event.key) || !event.newValue) {
             return;
         }
 

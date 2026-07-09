@@ -5,6 +5,7 @@ const {
     validateResendOTPPayload,
     validateSignupPayload,
     validateVerifyOTPPayload,
+    validatePhone,
 } = require('../src/validators/authValidator');
 
 test('validateSignupPayload accepts a valid user signup payload', () => {
@@ -96,4 +97,18 @@ test('OTP validators require valid email and 6-digit OTP', () => {
             email: 'player@example.com',
         })
     );
+});
+
+test('validatePhone accepts formatted numbers with 8 to 15 digits', () => {
+    assert.doesNotThrow(() => validatePhone('+84 912 345 678'));
+    assert.doesNotThrow(() => validatePhone('(028) 1234-5678'));
+    assert.doesNotThrow(() => validatePhone(''));
+});
+
+test('validatePhone rejects malformed values and invalid digit counts', () => {
+    assert.throws(() => validatePhone('1.......'), /8 to 15 digits/);
+    assert.throws(() => validatePhone('1234567'), /8 to 15 digits/);
+    assert.throws(() => validatePhone('1234567890123456'), /8 to 15 digits/);
+    assert.throws(() => validatePhone('+84 abc 12345678'), /valid phone number format/);
+    assert.throws(() => validatePhone('(028 1234-5678'), /valid phone number format/);
 });

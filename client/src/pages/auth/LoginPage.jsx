@@ -6,8 +6,13 @@ import GoogleIcon from "../../components/common/googleicon.jsx";
 import Logo from "../../components/common/logo.jsx";
 import loginBg from "../../assets/public/loginbg.png";
 import { normalizeEmail, validateEmail, validatePassword } from "../../utils/formValidation.js";
+import LanguageSwitcher from "../../components/common/LanguageSwitcher.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
+import { authApi } from "../../api/authApi.js";
+import ThemeSwitcher from "../../components/common/ThemeSwitcher.jsx";
 
 export default function LoginPage() {
+    const { t } = useI18n();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -27,8 +32,8 @@ export default function LoginPage() {
         event.preventDefault();
         const normalizedEmail = normalizeEmail(email);
         const errors = {
-            email: validateEmail(normalizedEmail),
-            password: validatePassword(password),
+            email: validateEmail(normalizedEmail, t),
+            password: validatePassword(password, t),
         };
         const nextErrors = Object.fromEntries(Object.entries(errors).filter(([, message]) => message));
 
@@ -47,29 +52,29 @@ export default function LoginPage() {
     };
 
     return (
-        <main className="min-h-screen overflow-hidden bg-background">
-            <div className="flex min-h-screen w-full bg-surface-container-lowest">
-                <section className="relative hidden w-1/2 items-center justify-center overflow-hidden bg-primary-container lg:flex">
-                    <img
-                        src={loginBg}
-                        alt="Badminton court"
-                        className="absolute inset-0 h-full w-full object-cover"
-                    />
+        <main className="relative min-h-screen overflow-hidden bg-background">
+            <div className="absolute right-lg top-lg z-20 flex gap-sm"><LanguageSwitcher /><ThemeSwitcher /></div>
+            <div className="flex min-h-screen w-full flex-col bg-surface-container-lowest lg:flex-row">
+                <section
+                    aria-label="Badminton court"
+                    className="relative flex h-56 w-full items-center justify-center overflow-hidden bg-cover bg-center lg:h-auto lg:min-h-screen lg:w-1/2"
+                    style={{ backgroundImage: `url(${loginBg})` }}
+                >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
                     <div className="absolute left-lg top-lg z-10">
                         <Logo />
                     </div>
 
-                    <div className="relative z-10 max-w-[32rem] px-xl text-white">
+                    <div className="relative z-10 hidden max-w-[32rem] px-xl text-white lg:block">
                         <p className="mb-sm text-label-sm font-semibold uppercase tracking-[0.16em] text-primary-fixed">
-                            Badminton Booking
+                            {t("auth.badmintonBooking")}
                         </p>
                         <h1 className="mb-md text-display-lg font-bold tracking-tight">
-                            Master the Court.
+                            {t("auth.loginHeroTitle")}
                         </h1>
                         <p className="text-body-lg text-white/90">
-                            Book courts, manage your schedule, and keep every badminton session in one place.
+                            {t("auth.loginHeroText")}
                         </p>
                     </div>
                 </section>
@@ -82,20 +87,20 @@ export default function LoginPage() {
                     <div className="w-full max-w-[400px]">
                         <div className="mb-xl text-center lg:text-left">
                             <p className="mb-sm text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                                Welcome back
+                                {t("auth.welcomeBack")}
                             </p>
                             <h2 className="mb-xs text-headline-lg font-semibold text-on-surface">
-                                Log in to your account
+                                {t("auth.loginTitle")}
                             </h2>
                             <p className="text-body-md text-on-surface-variant">
-                                Manage your bookings and upcoming play sessions.
+                                {t("auth.loginSubtitle")}
                             </p>
                         </div>
 
                         <form className="space-y-md" onSubmit={handleSubmit}>
                             <div className="space-y-xs">
                                 <label className="block text-label-sm text-on-surface-variant" htmlFor="email">
-                                    Email address
+                                    {t("auth.email")}
                                 </label>
                                 <input
                                     className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
@@ -107,6 +112,7 @@ export default function LoginPage() {
                                         setFieldErrors((current) => ({ ...current, email: "" }));
                                     }}
                                     placeholder="name@example.com"
+                                    maxLength={254}
                                     required
                                     type="email"
                                     value={email}
@@ -117,8 +123,9 @@ export default function LoginPage() {
                             <div className="space-y-xs">
                                 <div className="flex items-center justify-between gap-md">
                                     <label className="block text-label-sm text-on-surface-variant" htmlFor="password">
-                                        Password
+                                        {t("auth.password")}
                                     </label>
+                                    <Link className="text-label-sm font-semibold text-primary hover:underline" to="/forgot-password">Quên mật khẩu?</Link>
                                 </div>
 
                                 <div className="relative">
@@ -127,17 +134,18 @@ export default function LoginPage() {
                                         id="password"
                                         name="password"
                                         minLength={8}
+                                        maxLength={128}
                                         onChange={(event) => {
                                             setPassword(event.target.value);
                                             setFieldErrors((current) => ({ ...current, password: "" }));
                                         }}
-                                        placeholder="Enter your password"
+                                        placeholder={t("auth.passwordPlaceholder")}
                                         required
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                     />
                                     <button
-                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                        aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                                         className="absolute right-sm top-1/2 h-9 min-h-0 w-9 -translate-y-1/2 rounded-lg bg-transparent p-0 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
                                         onClick={() => setShowPassword((value) => !value)}
                                         type="button"
@@ -154,7 +162,7 @@ export default function LoginPage() {
                                     id="remember"
                                     type="checkbox"
                                 />
-                                Remember me for 30 days
+                                {t("auth.remember")}
                             </label>
 
                             <button
@@ -165,10 +173,10 @@ export default function LoginPage() {
                                 {isLoggingIn ? (
                                     <>
                                         <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                                        <span>Signing in...</span>
+                                        <span>{t("auth.signingIn")}</span>
                                     </>
                                 ) : (
-                                    "Log in"
+                                    t("auth.login")
                                 )}
                             </button>
 
@@ -178,24 +186,24 @@ export default function LoginPage() {
                                 </div>
                                 <div className="relative flex justify-center text-label-xs uppercase">
                                     <span className="bg-surface-container-lowest px-md text-on-surface-variant">
-                                        Or continue with
+                                        {t("auth.orContinue")}
                                     </span>
                                 </div>
                             </div>
 
-                            <button
+                            <a
                                 className="flex h-12 w-full items-center justify-center gap-sm rounded-xl border border-outline-variant bg-surface-container-lowest px-md font-bold text-on-surface transition-all duration-200 hover:bg-surface-container-low active:scale-[0.98]"
-                                type="button"
+                                href={authApi.googleLoginUrl}
                             >
                                 <GoogleIcon />
-                                Continue with Google
-                            </button>
+                                {t("auth.continueGoogle")}
+                            </a>
                         </form>
 
                         <p className="mt-xl text-center text-body-md text-on-surface-variant">
-                            Don&apos;t have an account?{" "}
+                            {t("auth.noAccount")}{" "}
                             <Link className="font-bold text-primary hover:underline" to="/register">
-                                Sign up
+                                {t("auth.signup")}
                             </Link>
                         </p>
                     </div>

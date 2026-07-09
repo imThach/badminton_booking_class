@@ -1,6 +1,19 @@
 export const queryKeys = {
     authUser: ["authUser"],
     myEnrollments: ["myEnrollments"],
+    myPayments: ["myPayments"],
+    refundRequests: ["refundRequests"],
+    adminPaymentHistory: ["admin-payment-history"],
+    bookmarks: ["bookmarks"],
+    waitlist: ["waitlist"],
+    reviews: (classId) => ["reviews", classId],
+    classSessions: (classId) => ["class-sessions", classId],
+    transferOptions: ["transfer-options"],
+    myTransfers: ["my-transfers"],
+    sessionTransfers: ["session-transfers"],
+    sessions: (classId) => ["sessions", classId],
+    roster: (sessionId) => ["roster", sessionId],
+    sessionClasses: ["session-classes"],
     classes: {
         all: ["classes"],
         list: (filters = {}) => ["classes", filters],
@@ -9,6 +22,8 @@ export const queryKeys = {
     admin: {
         all: ["admin"],
         classes: ["admin", "classes"],
+        coaches: ["admin", "coaches"],
+        dashboard: ["admin", "dashboard"],
         classStudents: (classId) => ["admin", "classes", classId, "students"],
     },
 };

@@ -72,6 +72,47 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-primary: #63d8a9;
+  --color-primary-container: #245c48;
+  --color-primary-fixed: #85f8c4;
+  --color-background: #0d1512;
+  --color-on-primary: #062117;
+  --color-on-surface: #e5eee9;
+  --color-on-surface-variant: #b7c7bf;
+  --color-outline-variant: #43564d;
+  --color-error: #ffb4ab;
+  --color-error-container: #5f201d;
+  --color-on-error-container: #ffdad6;
+  --color-surface-bright: #24302a;
+  --color-surface-container: #1b2621;
+  --color-surface-container-high: #25312b;
+  --color-surface-container-low: #141e1a;
+  --color-surface-container-lowest: #101915;
+  color: var(--color-on-surface);
+  background: var(--color-background);
+}
+
+html[data-theme="dark"] body { background: var(--color-background); color: var(--color-on-surface); }
+html[data-theme="dark"] .bg-white { background-color: var(--color-surface-container-lowest); }
+html[data-theme="dark"] .bg-primary.text-white { color: var(--color-on-primary); }
+html[data-theme="dark"] .bg-gray-50,
+html[data-theme="dark"] [class*="bg-gray-50/"] { background-color: var(--color-surface-container-low); }
+html[data-theme="dark"] .bg-gray-100,
+html[data-theme="dark"] [class*="bg-gray-100/"] { background-color: var(--color-surface-container); }
+html[data-theme="dark"] .text-gray-900 { color: var(--color-on-surface); }
+html[data-theme="dark"] .text-gray-600,
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-gray-400 { color: var(--color-on-surface-variant); }
+html[data-theme="dark"] .border-gray-100,
+html[data-theme="dark"] .border-gray-200 { border-color: var(--color-outline-variant); }
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea { color: var(--color-on-surface); }
+html[data-theme="dark"] input:disabled { color: var(--color-on-surface-variant); }
+html[data-theme="dark"] img { color-scheme: normal; }
+
 * {
   box-sizing: border-box;
 }

@@ -6,10 +6,13 @@ import { getApiErrorMessage } from "../../api/apiError.js";
 import { authApi } from "../../api/authApi.js";
 import Logo from "../../components/common/logo.jsx";
 import { normalizeEmail, validateEmail, validateOtp } from "../../utils/formValidation.js";
+import LanguageSwitcher from "../../components/common/LanguageSwitcher.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 const PENDING_SIGNUP_EMAIL_KEY = "badminton_booking_pending_signup_email";
 
 export default function VerifyOtpPage() {
+    const { t } = useI18n();
     const [otp, setOtp] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isResending, setIsResending] = useState(false);
@@ -45,7 +48,7 @@ export default function VerifyOtpPage() {
 
     const validateEmailInput = () => {
         const normalizedEmail = normalizeEmail(emailInput);
-        const nextEmailError = validateEmail(normalizedEmail);
+        const nextEmailError = validateEmail(normalizedEmail, t);
 
         setEmailInput(normalizedEmail);
         setEmailError(nextEmailError);
@@ -63,7 +66,7 @@ export default function VerifyOtpPage() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const nextOtpError = validateOtp(otp);
+        const nextOtpError = validateOtp(otp, t);
 
         if (!validateEmailInput()) {
             return;
@@ -78,7 +81,7 @@ export default function VerifyOtpPage() {
             setIsSubmitting(true);
             await authApi.verifySignupOTP({ email, otp });
             localStorage.removeItem(PENDING_SIGNUP_EMAIL_KEY);
-            toast.success("Account verified successfully. Please log in.");
+            toast.success(t("otp.verified"));
             navigate("/login");
         } catch (error) {
             toast.error(getApiErrorMessage(error, "Invalid or expired OTP"));
@@ -95,7 +98,7 @@ export default function VerifyOtpPage() {
         try {
             setIsResending(true);
             await authApi.resendSignupOTP({ email });
-            toast.success("A new OTP has been sent to your email.");
+            toast.success(t("otp.resent"));
         } catch (error) {
             toast.error(getApiErrorMessage(error, "Failed to resend OTP"));
         } finally {
@@ -104,7 +107,8 @@ export default function VerifyOtpPage() {
     };
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-background px-lg py-xl">
+        <main className="relative flex min-h-screen items-center justify-center bg-background px-lg py-xl">
+            <div className="absolute right-lg top-lg"><LanguageSwitcher /></div>
             <div className="w-full max-w-[440px]">
                 <div className="mb-xl flex justify-center">
                     <Logo mobile />
@@ -116,26 +120,25 @@ export default function VerifyOtpPage() {
                     </div>
 
                     <p className="mb-sm text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                        Email verification
+                        {t("otp.label")}
                     </p>
                     <h1 className="mb-sm text-headline-lg font-semibold text-on-surface">
-                        Check your inbox
+                        {t("otp.title")}
                     </h1>
                     <p className="mb-xl text-body-md text-on-surface-variant">
                         {email ? (
                             <>
-                                We sent a 6-digit code to{" "}
-                                <strong className="font-semibold text-on-surface">{email}</strong>.
+                                {t("otp.sentTo", { email })}
                             </>
                         ) : (
-                            "Enter the email address you used to create your account."
+                            t("otp.enterEmail")
                         )}
                     </p>
 
                     <form className="space-y-md" onSubmit={handleSubmit}>
                         <div className="space-y-xs text-left">
                             <label className="block text-label-sm text-on-surface-variant" htmlFor="email">
-                                Email address
+                                {t("auth.email")}
                             </label>
                             <input
                                 className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
@@ -156,7 +159,7 @@ export default function VerifyOtpPage() {
 
                         <div className="space-y-xs text-left">
                             <label className="block text-label-sm text-on-surface-variant" htmlFor="otp">
-                                Verification code
+                                {t("otp.code")}
                             </label>
                             <input
                                 className="h-14 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-center text-[22px] font-bold tracking-[0.45em] text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
@@ -182,29 +185,29 @@ export default function VerifyOtpPage() {
                             {isSubmitting ? (
                                 <>
                                     <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                                    <span>Verifying...</span>
+                                    <span>{t("otp.verifying")}</span>
                                 </>
                             ) : (
-                                "Verify account"
+                                t("otp.verify")
                             )}
                         </button>
                     </form>
 
                     <p className="mt-xl mb-lg text-body-md text-on-surface-variant">
-                        Didn't receive the code?{" "}
+                        {t("otp.noCode")}{" "}
                         <button
                             className="min-h-0 bg-transparent p-0 font-bold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={isResending}
                             onClick={handleResendOtp}
                             type="button"
                         >
-                            {isResending ? "Sending..." : "Resend"}
+                            {isResending ? t("otp.sending") : t("otp.resend")}
                         </button>
                     </p>
                     <p className="mt-lg text-center text-label-sm text-on-surface-variant">
-                        Wrong email?{" "}
+                        {t("otp.wrongEmail")}{" "}
                         <Link className="font-bold text-primary hover:underline" to="/register">
-                            Create account again
+                            {t("otp.createAgain")}
                         </Link>
                     </p>
                 </section>

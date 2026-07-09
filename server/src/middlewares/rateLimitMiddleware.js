@@ -1,5 +1,18 @@
 const AppError = require('../utils/appError');
 const RateLimitCounter = require('../models/RateLimitCounter');
+const { getRedisClient } = require('../config/redis');
+
+const incrementRedisCounter = async (key, windowMs) => {
+    const redis = await getRedisClient();
+    if (!redis) return null;
+    const result = await redis.eval(
+        "local count = redis.call('INCR', KEYS[1]); if count == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]); end; local ttl = redis.call('PTTL', KEYS[1]); return {count, ttl}",
+        1,
+        key,
+        windowMs
+    );
+    return { count: Number(result[0]), ttlMs: Number(result[1]) };
+};
 
 const createRateLimiter = ({
     name = 'default',
@@ -10,22 +23,30 @@ const createRateLimiter = ({
 } = {}) => {
     const prefix = `rate-limit:${name}`;
 
-    const incrementCounter = async (key, resetAt, now) =>
-        RateLimitCounter.findOneAndUpdate(
-            {
-                key,
-                resetAt: { $gt: new Date(now) },
-            },
-            {
-                $inc: { count: 1 },
-                $setOnInsert: { key, resetAt },
-            },
-            {
-                new: true,
-                upsert: true,
-                setDefaultsOnInsert: true,
-            }
+    const incrementCounter = async (key, resetAt, now) => {
+        let record = await RateLimitCounter.findOneAndUpdate(
+            { key, resetAt: { $gt: new Date(now) } },
+            { $inc: { count: 1 } },
+            { new: true }
         );
+        if (record) return record;
+        try {
+            return await RateLimitCounter.create({ key, count: 1, resetAt });
+        } catch (error) {
+            if (error.code !== 11000) throw error;
+        }
+        record = await RateLimitCounter.findOneAndUpdate(
+            { key, resetAt: { $lte: new Date(now) } },
+            { $set: { count: 1, resetAt } },
+            { new: true }
+        );
+        if (record) return record;
+        return RateLimitCounter.findOneAndUpdate(
+            { key, resetAt: { $gt: new Date(now) } },
+            { $inc: { count: 1 } },
+            { new: true }
+        );
+    };
 
     return async (req, res, next) => {
         const now = Date.now();
@@ -36,14 +57,24 @@ const createRateLimiter = ({
             let record;
 
             try {
-                record = await incrementCounter(key, resetAt, now);
-            } catch (error) {
-                if (error.code !== 11000) {
-                    throw error;
+                const redisRecord = await incrementRedisCounter(key, windowMs);
+                if (redisRecord) {
+                    const retryAfterSeconds = Math.max(Math.ceil(redisRecord.ttlMs / 1000), 1);
+                    res.set('RateLimit-Limit', String(max));
+                    res.set('RateLimit-Remaining', String(Math.max(max - redisRecord.count, 0)));
+                    res.set('RateLimit-Reset', String(retryAfterSeconds));
+                    if (redisRecord.count > max) {
+                        res.set('Retry-After', String(retryAfterSeconds));
+                        return next(new AppError(message, 429));
+                    }
+                    return next();
                 }
-
-                record = await incrementCounter(key, resetAt, now);
+            } catch (redisError) {
+                if (String(process.env.RATE_LIMIT_FALLBACK || 'mongodb') !== 'mongodb') throw redisError;
+                console.error('Redis rate limiter fallback:', redisError.message);
             }
+
+            record = await incrementCounter(key, resetAt, now);
 
             if (record.count > max) {
                 const retryAfterSeconds = Math.max(Math.ceil((record.resetAt.getTime() - now) / 1000), 1);

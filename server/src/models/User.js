@@ -16,7 +16,13 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: [true, 'Please enter a password'],
+            required: function () { return !this.googleId; },
+            select: false,
+        },
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true,
             select: false,
         },
         role: {
@@ -24,7 +30,17 @@ const userSchema = new mongoose.Schema(
             enum: ['user', 'admin'],
             default: 'user',
         },
+        avatar: { type: String, trim: true, default: '' },
+        avatarPublicId: { type: String, select: false, default: '' },
+        phone: { type: String, trim: true, maxlength: 30, default: '' },
+        bio: { type: String, trim: true, maxlength: 500, default: '' },
+        skillLevel: { type: String, enum: ['', 'beginner', 'intermediate', 'advanced'], default: '' },
+        preferredCourt: { type: String, trim: true, maxlength: 150, default: '' },
+        hasLocalPassword: { type: Boolean, default: true },
         passwordChangedAt: Date,
+        passwordResetOtpHash: { type: String, select: false },
+        passwordResetOtpExpires: { type: Date, select: false },
+        passwordResetOtpAttempts: { type: Number, default: 0, select: false },
         isVerified: {
             type: Boolean,
             default: false,
@@ -46,12 +62,14 @@ const userSchema = new mongoose.Schema(
 // Hash the password before saving.
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
+    if (!this.password) return;
     if (this.$locals.passwordAlreadyHashed) return;
     this.password = await bcrypt.hash(this.password, 12);
 });
 
 // Compare a candidate password during login.
 userSchema.methods.correctPassword = async function (candidatePassword, userPassword) {
+    if (!userPassword) return false;
     return await bcrypt.compare(candidatePassword, userPassword);
 };
 

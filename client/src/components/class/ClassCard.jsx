@@ -1,6 +1,8 @@
-import { Clock, MapPin, User } from "lucide-react";
+import { Calendar, Clock, MapPin, User } from "lucide-react";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 export default function ClassCard({ item, onView, actionSlot }) {
+    const { language, t } = useI18n();
     const title = item.title || item.name;
     const coach = item.coachName || item.coach;
     const enrolled = Number(item.currentStudents ?? item.enrolled ?? 0);
@@ -10,6 +12,9 @@ export default function ClassCard({ item, onView, actionSlot }) {
     const isFull = enrolled >= capacity;
 
     const imageUrl = item.image || item.imageUrl || "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?q=80&w=600&auto=format&fit=crop";
+    const formatDateTime = (value) => value
+        ? new Intl.DateTimeFormat(language === "vi" ? "vi-VN" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+        : "-";
 
     return (
         <div className="flex flex-col bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -20,7 +25,7 @@ export default function ClassCard({ item, onView, actionSlot }) {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute top-3 right-3 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-sm uppercase tracking-wider shadow-sm">
-                    {item.level || "ALL LEVELS"}
+                    {item.level ? t(`common.${item.level}`) : t("classes.allLevels")}
                 </div>
             </div>
 
@@ -31,13 +36,14 @@ export default function ClassCard({ item, onView, actionSlot }) {
                 <div className="space-y-sm mb-lg text-label-sm text-on-surface-variant">
                     <div className="flex items-center gap-sm"><User size={18} className="opacity-75" /><span>{coach}</span></div>
                     <div className="flex items-center gap-sm"><Clock size={18} className="opacity-75" /><span>{item.schedule}</span></div>
+                    <div className="flex items-start gap-sm"><Calendar size={18} className="mt-0.5 shrink-0 opacity-75" /><span>{formatDateTime(item.startDate)}{item.endDate && <> → {formatDateTime(item.endDate)}</>}</span></div>
                     <div className="flex items-center gap-sm"><MapPin size={18} className="opacity-75" /><span>{item.location}</span></div>
                 </div>
 
                 <div className="mt-auto pt-sm">
                     <div className="flex justify-between items-center text-label-xs mb-xs">
-                        <span className="font-semibold text-on-surface-variant">Capacity</span>
-                        <span className="font-bold text-primary">{enrolled}/{capacity} Enrolled</span>
+                        <span className="font-semibold text-on-surface-variant">{t("classes.capacity")}</span>
+                        <span className="font-bold text-primary">{enrolled}/{capacity} {t("classes.enrolled")}</span>
                     </div>
 
                     <div className="w-full bg-surface-container-high rounded-full h-2 mb-lg overflow-hidden">
@@ -49,7 +55,7 @@ export default function ClassCard({ item, onView, actionSlot }) {
                             onClick={() => onView && onView(item)}
                             className={`w-full py-2.5 px-4 rounded-lg font-bold text-label-sm transition-colors ${isFull ? "border-2 border-primary text-primary bg-transparent hover:bg-primary-container/20" : "bg-primary text-white hover:bg-primary-container active:scale-[0.98]"}`}
                         >
-                            View Details
+                            {t("common.viewDetails")}
                         </button>
                     )}
                 </div>

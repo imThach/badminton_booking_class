@@ -12,6 +12,7 @@ const classSchema = {
         coachName: { type: 'string', example: 'Nguyen Van A' },
         level: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'], example: 'beginner' },
         startDate: { type: 'string', format: 'date-time', example: '2026-07-01T12:00:00.000Z' },
+        endDate: { type: 'string', format: 'date-time', example: '2026-07-01T13:30:00.000Z' },
         schedule: { type: 'string', example: 'Mon/Wed/Fri 18:00-19:30' },
         location: { type: 'string', example: 'Court 1, District 1' },
         currentStudents: { type: 'integer', example: 3 },
@@ -32,13 +33,14 @@ const classSchema = {
 
 const classInputSchema = {
     type: 'object',
-    required: ['title', 'description', 'coachName', 'level', 'startDate', 'schedule', 'location', 'maxStudents'],
+    required: ['title', 'description', 'coachName', 'level', 'startDate', 'endDate', 'schedule', 'location', 'maxStudents'],
     properties: {
         title: { type: 'string', example: 'Beginner Badminton Class' },
         description: { type: 'string', example: 'Basic badminton techniques for new players.' },
         coachName: { type: 'string', example: 'Nguyen Van A' },
         level: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'], example: 'beginner' },
         startDate: { type: 'string', format: 'date-time', example: '2026-07-01T12:00:00.000Z' },
+        endDate: { type: 'string', format: 'date-time', example: '2026-07-01T13:30:00.000Z' },
         schedule: { type: 'string', example: 'Mon/Wed/Fri 18:00-19:30' },
         location: { type: 'string', example: 'Court 1, District 1' },
         maxStudents: { type: 'integer', minimum: 1, example: 20 },

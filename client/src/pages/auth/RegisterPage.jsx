@@ -7,11 +7,15 @@ import { authApi } from "../../api/authApi.js";
 import GoogleIcon from "../../components/common/googleicon.jsx";
 import Logo from "../../components/common/logo.jsx";
 import registerBg from "../../assets/public/registerbg.png";
-import { normalizeEmail, validateEmail, validatePassword, validateRequired } from "../../utils/formValidation.js";
+import { normalizeEmail, validateEmail, validateName, validatePassword } from "../../utils/formValidation.js";
+import LanguageSwitcher from "../../components/common/LanguageSwitcher.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
+import ThemeSwitcher from "../../components/common/ThemeSwitcher.jsx";
 
 const PENDING_SIGNUP_EMAIL_KEY = "badminton_booking_pending_signup_email";
 
 export default function RegisterPage() {
+    const { t } = useI18n();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -26,10 +30,10 @@ export default function RegisterPage() {
         event.preventDefault();
         const normalizedEmail = normalizeEmail(email);
         const errors = {
-            name: validateRequired(name, "Full name"),
-            email: validateEmail(normalizedEmail),
-            password: validatePassword(password),
-            terms: agreeTerms ? "" : "Please agree to the Terms and Privacy Policy.",
+            name: validateName(name, t),
+            email: validateEmail(normalizedEmail, t),
+            password: validatePassword(password, t),
+            terms: agreeTerms ? "" : t("validation.terms"),
         };
         const nextErrors = Object.fromEntries(Object.entries(errors).filter(([, message]) => message));
 
@@ -43,7 +47,7 @@ export default function RegisterPage() {
             setIsSubmitting(true);
             await authApi.signup({ name: name.trim(), email: normalizedEmail, password });
             localStorage.setItem(PENDING_SIGNUP_EMAIL_KEY, normalizedEmail);
-            toast.success("OTP has been sent to your email.");
+            toast.success(t("auth.otpSent"));
             navigate(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}`, {
                 state: { email: normalizedEmail },
             });
@@ -55,8 +59,9 @@ export default function RegisterPage() {
     };
 
     return (
-        <main className="min-h-screen overflow-hidden bg-background">
-            <div className="flex min-h-screen w-full bg-surface-container-lowest">
+        <main className="relative min-h-screen overflow-hidden bg-background">
+            <div className="absolute right-lg top-lg z-20 flex gap-sm"><LanguageSwitcher /><ThemeSwitcher /></div>
+            <div className="flex min-h-screen w-full flex-col bg-surface-container-lowest lg:flex-row">
                 <section className="flex w-full flex-col items-center justify-center bg-surface-container-lowest px-lg py-xl lg:w-1/2">
                     <div className="w-full max-w-[420px]">
                         <div className="mb-xl">
@@ -65,20 +70,20 @@ export default function RegisterPage() {
 
                         <div className="mb-xl">
                             <p className="mb-sm text-label-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                                Create account
+                                {t("auth.createAccount")}
                             </p>
                             <h1 className="mb-xs text-headline-lg font-semibold text-on-surface">
-                                Join SmashCourts
+                                {t("auth.join")}
                             </h1>
                             <p className="text-body-md text-on-surface-variant">
-                                Sign up to book courts, manage schedules, and verify your email with OTP.
+                                {t("auth.registerSubtitle")}
                             </p>
                         </div>
 
                         <form className="space-y-md" onSubmit={handleSubmit}>
                             <div className="space-y-xs">
                                 <label className="block text-label-sm text-on-surface-variant" htmlFor="name">
-                                    Full name
+                                    {t("auth.fullName")}
                                 </label>
                                 <input
                                     className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
@@ -89,6 +94,7 @@ export default function RegisterPage() {
                                         setFieldErrors((current) => ({ ...current, name: "" }));
                                     }}
                                     placeholder="Nguyen Van A"
+                                    maxLength={100}
                                     required
                                     type="text"
                                     value={name}
@@ -98,7 +104,7 @@ export default function RegisterPage() {
 
                             <div className="space-y-xs">
                                 <label className="block text-label-sm text-on-surface-variant" htmlFor="email">
-                                    Email address
+                                    {t("auth.email")}
                                 </label>
                                 <input
                                     className="h-12 w-full rounded-xl border border-outline-variant bg-surface-bright px-md text-body-md text-on-surface transition-all duration-200 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
@@ -110,6 +116,7 @@ export default function RegisterPage() {
                                         setFieldErrors((current) => ({ ...current, email: "" }));
                                     }}
                                     placeholder="name@example.com"
+                                    maxLength={254}
                                     required
                                     type="email"
                                     value={email}
@@ -119,7 +126,7 @@ export default function RegisterPage() {
 
                             <div className="space-y-xs">
                                 <label className="block text-label-sm text-on-surface-variant" htmlFor="password">
-                                    Password
+                                    {t("auth.password")}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -127,17 +134,18 @@ export default function RegisterPage() {
                                         id="password"
                                         name="password"
                                         minLength={8}
+                                        maxLength={128}
                                         onChange={(event) => {
                                             setPassword(event.target.value);
                                             setFieldErrors((current) => ({ ...current, password: "" }));
                                         }}
-                                        placeholder="Create a password"
+                                        placeholder={t("auth.createPassword")}
                                         required
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                     />
                                     <button
-                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                        aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                                         className="absolute right-sm top-1/2 flex h-9 min-h-0 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent p-0 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
                                         onClick={() => setShowPassword((value) => !value)}
                                         type="button"
@@ -160,13 +168,13 @@ export default function RegisterPage() {
                                     type="checkbox"
                                 />
                                 <span>
-                                    I agree to the{" "}
+                                    {t("auth.agreePrefix")}{" "}
                                     <a className="font-semibold text-primary hover:underline" href="#">
-                                        Terms
+                                        {t("footer.terms")}
                                     </a>{" "}
-                                    and{" "}
+                                    {t("auth.and")}{" "}
                                     <a className="font-semibold text-primary hover:underline" href="#">
-                                        Privacy Policy
+                                        {t("footer.privacy")}
                                     </a>
                                 </span>
                             </label>
@@ -180,10 +188,10 @@ export default function RegisterPage() {
                                 {isSubmitting ? (
                                     <>
                                         <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                                        <span>Creating account...</span>
+                                        <span>{t("auth.creating")}</span>
                                     </>
                                 ) : (
-                                    "Create account"
+                                    t("auth.createAccount")
                                 )}
                             </button>
                         </form>
@@ -194,45 +202,44 @@ export default function RegisterPage() {
                             </div>
                             <div className="relative flex justify-center text-label-xs uppercase">
                                 <span className="bg-surface-container-lowest px-md text-on-surface-variant">
-                                    Or continue with
+                                    {t("auth.orContinue")}
                                 </span>
                             </div>
                         </div>
 
-                        <button
+                        <a
                             className="flex h-12 w-full items-center justify-center gap-sm rounded-xl border border-outline-variant bg-surface-container-lowest px-md font-bold text-on-surface transition-all duration-200 hover:bg-surface-container-low active:scale-[0.98]"
-                            type="button"
+                            href={authApi.googleLoginUrl}
                         >
                             <GoogleIcon />
-                            Sign up with Google
-                        </button>
+                            {t("auth.signupGoogle")}
+                        </a>
 
                         <p className="mt-xl text-center text-body-md text-on-surface-variant">
-                            Already have an account?{" "}
+                            {t("auth.hasAccount")}{" "}
                             <Link className="font-bold text-primary hover:underline" to="/login">
-                                Log in
+                                {t("auth.login")}
                             </Link>
                         </p>
                     </div>
                 </section>
 
-                <section className="relative hidden w-1/2 items-center justify-center overflow-hidden bg-primary-container lg:flex">
-                    <img
-                        alt="Badminton court"
-                        className="absolute inset-0 h-full w-full object-cover"
-                        src={registerBg}
-                    />
+                <section
+                    aria-label="Badminton court"
+                    className="relative order-first flex h-56 w-full items-center justify-center overflow-hidden bg-cover bg-center lg:order-none lg:h-auto lg:min-h-screen lg:w-1/2"
+                    style={{ backgroundImage: `url(${registerBg})` }}
+                >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/10" />
 
-                    <div className="relative z-10 max-w-[32rem] px-xl text-white">
+                    <div className="relative z-10 hidden max-w-[32rem] px-xl text-white lg:block">
                         <p className="mb-sm text-label-sm font-semibold uppercase tracking-[0.16em] text-primary-fixed">
-                            New season, new court
+                            {t("auth.registerHeroLabel")}
                         </p>
                         <h2 className="mb-md text-display-lg font-bold tracking-tight">
-                            Elevate your game.
+                            {t("auth.registerHeroTitle")}
                         </h2>
                         <p className="text-body-lg text-white/90">
-                            Create your account and get ready to reserve your next badminton session faster.
+                            {t("auth.registerHeroText")}
                         </p>
                     </div>
                 </section>

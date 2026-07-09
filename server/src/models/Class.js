@@ -14,6 +14,11 @@ const classSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter the coach name'],
         },
+        coach: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'Coach',
+            default: null,
+        },
         level: {
             type: String,
             enum: ['beginner', 'intermediate', 'advanced'],
@@ -22,6 +27,15 @@ const classSchema = new mongoose.Schema(
         startDate: {
             type: Date,
             required: [true, 'Please enter the start date of the class'],
+        },
+        endDate: {
+            type: Date,
+            validate: {
+                validator(value) {
+                    return !value || !this.startDate || value > this.startDate;
+                },
+                message: 'Class end date must be after its start date',
+            },
         },
         schedule: {
             type: String,
@@ -36,6 +50,11 @@ const classSchema = new mongoose.Schema(
             required: [true, 'Please enter the maximum number of students'],
             min: [1, 'Maximum students must be greater than 0'],
         },
+        price: {
+            type: Number,
+            min: [1000, 'Price must be at least 1,000 VND'],
+            default: 250000,
+        },
         currentStudents: {
             type: Number,
             default: 0,
@@ -49,5 +68,7 @@ const classSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+classSchema.index({ coach: 1, startDate: 1, endDate: 1 });
 
 module.exports = mongoose.model('Class', classSchema);

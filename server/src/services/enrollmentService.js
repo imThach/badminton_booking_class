@@ -2,8 +2,12 @@ const mongoose = require('mongoose');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
 const EnrollmentCancellation = require('../models/EnrollmentCancellation');
+const Payment = require('../models/Payment');
+const notificationService = require('./notificationService');
 const AppError = require('../utils/appError');
 const CANCEL_ENROLLMENT_GUARD_MS = 2 * 60 * 1000;
+const occupyingStatusFilter = { $or: [{ status: { $in: ['active', 'pending_payment'] } }, { status: { $exists: false } }] };
+const activeStatusFilter = { $or: [{ status: 'active' }, { status: { $exists: false } }] };
 
 const assertValidClassId = (classId) => {
     if (!mongoose.isValidObjectId(classId)) {
@@ -61,7 +65,10 @@ const hasRecentCancellation = async ({ classId, userId, session }) => {
 };
 
 const syncClassCurrentStudents = async (classId, session) => {
-    const currentStudents = await Enrollment.countDocuments({ class: classId }).session(session);
+    const currentStudents = await Enrollment.countDocuments({
+        class: classId,
+        ...occupyingStatusFilter,
+    }).session(session);
     return Class.findByIdAndUpdate(
         classId,
         { currentStudents },
@@ -69,7 +76,7 @@ const syncClassCurrentStudents = async (classId, session) => {
     );
 };
 
-exports.enrollClass = async ({ classId, userId }) => {
+exports.enrollClass = async ({ classId, userId, status = 'active' }) => {
     assertValidClassId(classId);
 
     const now = new Date();
@@ -88,7 +95,7 @@ exports.enrollClass = async ({ classId, userId }) => {
         user: userId,
     });
 
-    if (existingEnrollment) {
+    if (existingEnrollment && existingEnrollment.status !== 'cancelled') {
         throw new AppError('You have already enrolled in this class', 409);
     }
 
@@ -116,10 +123,21 @@ exports.enrollClass = async ({ classId, userId }) => {
 
     try {
         await assertNoRecentCancellation({ classId, userId });
-        const enrollment = await Enrollment.create({
-            class: classId,
-            user: userId,
-        });
+        let enrollment;
+        if (existingEnrollment?.status === 'cancelled') {
+            existingEnrollment.status = status;
+            existingEnrollment.enrolledAt = new Date();
+            existingEnrollment.cancelledAt = undefined;
+            existingEnrollment.cancellationReason = undefined;
+            existingEnrollment.refundEligible = false;
+            enrollment = await existingEnrollment.save();
+        } else {
+            enrollment = await Enrollment.create({
+                class: classId,
+                user: userId,
+                status,
+            });
+        }
 
         const populatedEnrollment = await Enrollment.findById(enrollment._id)
             .populate('class')
@@ -141,13 +159,15 @@ exports.cancelEnrollment = async ({ classId, userId }) => {
 
     const session = await mongoose.startSession();
     let result;
+    let cancellationNotification;
 
     try {
         await session.withTransaction(async () => {
-            const enrollment = await Enrollment.findOneAndDelete({
+            const enrollment = await Enrollment.findOne({
                 class: classId,
                 user: userId,
-            }).session(session).populate('class');
+                ...activeStatusFilter,
+            }).session(session).populate('class').populate('user', 'name email');
 
             if (!enrollment) {
                 if (await hasRecentCancellation({ classId, userId, session })) {
@@ -169,24 +189,59 @@ exports.cancelEnrollment = async ({ classId, userId }) => {
                 return;
             }
 
+            const refundEligible = enrollment.class.startDate.getTime() - Date.now() >= 24 * 60 * 60 * 1000;
+            enrollment.status = 'cancelled';
+            enrollment.cancelledAt = new Date();
+            enrollment.cancellationReason = 'Cancelled by user';
+            enrollment.refundEligible = refundEligible;
+            await enrollment.save({ session });
+
+            let refundStatus = 'not_applicable';
+            const payment = await Payment.findOne({ enrollment: enrollment._id, status: 'paid' })
+                .sort({ paidAt: -1 })
+                .session(session);
+            if (refundEligible && payment?.status === 'paid') {
+                payment.status = 'refund_pending';
+                payment.refundRequestedAt = new Date();
+                await payment.save({ session });
+                refundStatus = 'refund_pending';
+            } else if (payment) {
+                refundStatus = payment.status;
+            }
+
             await createCancellationGuard({ classId, userId, session });
             const updatedClass = await syncClassCurrentStudents(classId, session);
             const enrollmentResponse = toEnrollmentResponse(enrollment);
             if (updatedClass) {
                 enrollmentResponse.class = updatedClass;
             }
+            enrollmentResponse.refundStatus = refundStatus;
+            enrollmentResponse.refundEligible = refundEligible;
 
             result = enrollmentResponse;
+            cancellationNotification = {
+                user: enrollment.user,
+                classDetail: enrollment.class,
+                cancelledAt: enrollment.cancelledAt,
+                refundEligible,
+                refundStatus,
+            };
         });
     } finally {
         await session.endSession();
+    }
+
+    if (cancellationNotification) {
+        void notificationService.sendCancellationNotification(cancellationNotification).catch((error) => {
+            console.error('Could not send cancellation confirmation email:', error.message);
+        });
     }
 
     return result;
 };
 
 exports.getMyEnrollments = async (userId) => {
-    const enrollments = await Enrollment.find({ user: userId })
+    const enrollments = await Enrollment.find({ user: userId, ...activeStatusFilter })
         .sort({ enrolledAt: -1 })
         .populate({
             path: 'class',

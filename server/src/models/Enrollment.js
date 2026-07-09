@@ -15,6 +15,15 @@ const enrollmentSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    status: {
+        type: String,
+        enum: ['pending_payment', 'active', 'cancelled'],
+        default: 'active',
+        index: true,
+    },
+    cancelledAt: Date,
+    cancellationReason: { type: String, trim: true, maxlength: 500 },
+    refundEligible: { type: Boolean, default: false },
 });
 
 // Prevent a user from enrolling in the same class twice at the database level.

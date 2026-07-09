@@ -1,16 +1,18 @@
 import Button from "./Button.jsx";
+import { useI18n } from "../../i18n/I18nProvider.jsx";
 
 export default function ConfirmDialog({
     isOpen,
     title,
     message,
-    confirmLabel = "Confirm",
-    cancelLabel = "Cancel",
+    confirmLabel,
+    cancelLabel,
     variant = "primary",
     isLoading = false,
     onCancel,
     onConfirm,
 }) {
+    const { t } = useI18n();
     if (!isOpen) return null;
 
     return (
@@ -34,7 +36,7 @@ export default function ConfirmDialog({
                         type="button"
                         variant="secondary"
                     >
-                        {cancelLabel}
+                        {cancelLabel || t("common.cancel")}
                     </Button>
                     <Button
                         className="w-full px-md text-white py-sm sm:w-auto"
@@ -43,7 +45,7 @@ export default function ConfirmDialog({
                         type="button"
                         variant={variant === "danger" ? "danger" : "primary"}
                     >
-                        {isLoading ? "Processing..." : confirmLabel}
+                        {isLoading ? t("common.processing") : confirmLabel || t("common.confirm")}
                     </Button>
                 </div>
             </div>

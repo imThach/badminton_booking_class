@@ -1,8 +1,9 @@
 require('dotenv').config();
 const app = require('./app');
 const connectDB = require('./src/config/db');
+const { startClassReminderJob } = require('./src/jobs/classReminderJob');
 
-connectDB();
+connectDB().then(() => startClassReminderJob());
 
 const PORT = process.env.PORT || 3001;
 

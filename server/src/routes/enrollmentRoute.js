@@ -8,7 +8,6 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/me', enrollmentController.getMyEnrollments);
-router.post('/classes/:classId', restrictTo('user'), enrollmentValidator.validateClassIdParam, enrollmentController.enrollClass);
 router.delete('/classes/:classId', restrictTo('user'), enrollmentValidator.validateClassIdParam, enrollmentController.cancelEnrollment);
 
 module.exports = router;

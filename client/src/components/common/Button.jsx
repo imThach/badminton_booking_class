@@ -14,7 +14,7 @@ export default function Button({
 
     return (
         <button
-            className={`inline-flex min-h-10 items-center justify-center gap-sm rounded-lg font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${variants[variant] || variants.primary} ${className}`}
+            className={`inline-flex px-2 min-h-10 items-center justify-center gap-sm rounded-lg font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${variants[variant] || variants.primary} ${className}`}
             type={type}
             {...props}
         >
