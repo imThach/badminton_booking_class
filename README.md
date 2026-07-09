@@ -61,6 +61,18 @@
 - **Protected Routes:** Bảo vệ các tuyến đường điều hướng trên Frontend.
 - **Deployment:** Quy trình deploy hoàn chỉnh FE lên Vercel và BE lên Render trong môi trường chạy thực tế.
 
+## Email OTP với Nodemailer
+
+Ứng dụng sử dụng Nodemailer để gửi mã OTP khi đăng ký tài khoản.
+Cấu hình SMTP trong `server/.env`:
+- [ ] EMAIL_HOST=smtp.gmail.com
+- [ ] EMAIL_PORT=465
+- [ ] EMAIL_SECURE=true
+- [ ] EMAIL_REQUIRE_TLS=false
+- [ ] EMAIL_USER=your_email@gmail.com
+- [ ] EMAIL_PASS=your_google_app_password
+- [ ] EMAIL_FROM=Badminton Booking <your_email@gmail.com>
+
 ## 🎯 Tiêu chí hoàn thành (Done Criteria)
 - [ ] Danh sách lớp học hiển thị đúng, có loading state
 - [ ] Tìm kiếm và lọc lớp học hoạt động
