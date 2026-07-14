@@ -20,6 +20,7 @@ const sendTokenResponse = (result, statusCode, res) => {
     res.cookie('jwt', result.token, cookieOptions);
 
     sendResponse(res, statusCode, 'Login successful', {
+        token: result.token,
         user: result.user,
     });
 };
@@ -117,7 +118,7 @@ exports.googleCallback = catchAsync(async (req, res) => {
 
     const cookieDays = Number(process.env.JWT_COOKIE_EXPIRES_IN) || 30;
     res.cookie('jwt', result.token, getCookieOptions(cookieDays * 24 * 60 * 60 * 1000));
-    res.redirect(`${getClientUrl()}/?oauth=success`);
+    res.redirect(`${getClientUrl()}/?oauth=success&token=${encodeURIComponent(result.token)}`);
 });
 
 const getPendingGoogleProfile = (req) => {

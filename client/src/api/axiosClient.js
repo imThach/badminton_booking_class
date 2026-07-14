@@ -3,6 +3,19 @@ import axios from "axios";
 export const AUTH_UNAUTHORIZED_EVENT = "badminton_booking_auth_unauthorized";
 export const AUTH_UNAUTHORIZED_MESSAGE = "Your session has expired. Please log in again.";
 export const apiBaseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api/v1" : "http://localhost:3001/api/v1");
+export const AUTH_TOKEN_KEY = "badminton_booking_auth_token";
+
+export const getAuthToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
+
+export const setAuthToken = (token) => {
+    if (token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+    }
+};
+
+export const clearAuthToken = () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+};
 
 const PUBLIC_AUTH_PATHS = [
     "/auth/login",
@@ -24,6 +37,15 @@ export const api = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
+});
+
+api.interceptors.request.use((config) => {
+    const token = getAuthToken();
+    if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
 });
 
 api.interceptors.response.use(

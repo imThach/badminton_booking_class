@@ -25,8 +25,9 @@ export default function GoogleSignupPage() {
   const confirm = async () => {
     try {
       setIsSubmitting(true);
-      await authApi.confirmGoogleSignup();
-      window.location.assign('/?oauth=success');
+      const response = await authApi.confirmGoogleSignup();
+      const token = response?.data?.token;
+      window.location.assign(token ? `/?oauth=success&token=${encodeURIComponent(token)}` : '/?oauth=success');
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Không thể tạo tài khoản Google.'));
       setIsSubmitting(false);

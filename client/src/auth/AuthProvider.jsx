@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { authApi } from "../api/authApi.js";
 import { getApiErrorMessage } from "../api/apiError.js";
-import { AUTH_UNAUTHORIZED_EVENT, AUTH_UNAUTHORIZED_MESSAGE } from "../api/axiosClient.js";
+import { AUTH_UNAUTHORIZED_EVENT, AUTH_UNAUTHORIZED_MESSAGE, clearAuthToken, getAuthToken, setAuthToken } from "../api/axiosClient.js";
 import { queryKeys } from "../api/queryKeys.js";
 import { broadcastInvalidateQueries } from "../api/broadcastQueryClient.js";
 import { useI18n } from "../i18n/I18nProvider.jsx";
@@ -26,15 +26,17 @@ export function AuthProvider({ children }) {
   const { language, t } = useI18n();
   const queryClient = useQueryClient();
   const loginInFlightRef = useRef(false);
+  const oauthTokenRef = useRef(new URLSearchParams(window.location.search).get("token"));
   const oauthLoginRef = useRef(
     new URLSearchParams(window.location.search).get("oauth") === "success"
   );
   const [hasAuthSession, setHasAuthSession] = useState(
-    () => localStorage.getItem(AUTH_SESSION_KEY) === "true" || oauthLoginRef.current
+    () => localStorage.getItem(AUTH_SESSION_KEY) === "true" || Boolean(getAuthToken()) || oauthLoginRef.current
   );
 
   const clearSession = useCallback(() => {
     localStorage.removeItem(AUTH_SESSION_KEY);
+    clearAuthToken();
     setHasAuthSession(false);
     queryClient.removeQueries({ queryKey: queryKeys.authUser, exact: true });
     queryClient.removeQueries({ queryKey: queryKeys.myEnrollments });
@@ -51,6 +53,18 @@ export function AuthProvider({ children }) {
       queryKeys.admin.all,
     ]);
   }, [queryClient]);
+
+  useEffect(() => {
+    if (!oauthLoginRef.current || !oauthTokenRef.current) return;
+
+    setAuthToken(oauthTokenRef.current);
+    localStorage.setItem(AUTH_SESSION_KEY, "true");
+    setHasAuthSession(true);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("token");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
 
   const { data: userResponse, isError: isUserError, isLoading: isLoadingUser } = useQuery({
     queryKey: queryKeys.authUser,
@@ -107,6 +121,7 @@ export function AuthProvider({ children }) {
       clearSession();
     },
     onSuccess: (loginResponse) => {
+      setAuthToken(loginResponse?.data?.token);
       localStorage.setItem(AUTH_SESSION_KEY, "true");
       queryClient.setQueryData(queryKeys.authUser, loginResponse);
       queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
