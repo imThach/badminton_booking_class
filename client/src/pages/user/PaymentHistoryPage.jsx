@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download, ReceiptText } from 'lucide-react';
+import { useState } from 'react';
 import { paymentApi } from '../../api/paymentApi.js';
 import { queryKeys } from '../../api/queryKeys.js';
 import Header from '../../components/layout/Header.jsx';
@@ -15,8 +16,16 @@ const hasInvoice = status => ['paid', 'refund_pending', 'refunded', 'refund_fail
 
 export default function PaymentHistoryPage() {
   const { language, t } = useI18n();
-  const { data, isLoading, isError } = useQuery({ queryKey: queryKeys.myPayments, queryFn: paymentApi.getMyPayments });
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const { data, isLoading, isError } = useQuery({
+    queryKey: [...queryKeys.myPayments, { page, limit }],
+    queryFn: () => paymentApi.getMyPayments({ page, limit }),
+  });
   const payments = data?.data?.payments || [];
+  const pagination = data?.data?.pagination || { page, totalPages: 1, total: payments.length };
+  const visiblePages = Array.from({ length: pagination.totalPages }, (_, index) => index + 1)
+    .filter((value) => value === 1 || value === pagination.totalPages || Math.abs(value - pagination.page) <= 1);
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
   const statusLabel = {
     paid: t('paymentHistory.status.paid'),
@@ -93,6 +102,38 @@ export default function PaymentHistoryPage() {
             </article>
           ))}
         </div>
+        {!isLoading && !isError && pagination.totalPages > 1 && (
+          <nav className="mt-xl flex flex-wrap items-center justify-center gap-xs" aria-label="Pagination">
+            <button
+              className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+              disabled={pagination.page <= 1}
+              onClick={() => setPage((value) => Math.max(value - 1, 1))}
+              type="button"
+            >
+              {t('classes.previous')}
+            </button>
+            {visiblePages.map((value, index) => (
+              <span className="contents" key={value}>
+                {index > 0 && value - visiblePages[index - 1] > 1 && <span className="px-xs">...</span>}
+                <button
+                  className={`h-10 min-w-10 rounded-lg px-sm font-bold ${pagination.page === value ? 'bg-primary text-white' : 'border border-outline-variant'}`}
+                  onClick={() => setPage(value)}
+                  type="button"
+                >
+                  {value}
+                </button>
+              </span>
+            ))}
+            <button
+              className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => setPage((value) => Math.min(value + 1, pagination.totalPages))}
+              type="button"
+            >
+              {t('classes.next')}
+            </button>
+          </nav>
+        )}
       </main>
       <Footer />
     </div>

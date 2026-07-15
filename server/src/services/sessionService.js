@@ -83,10 +83,12 @@ exports.markAttendance = async ({ sessionId, records, markedBy }) => {
         throw new AppError('records is required', 400);
     }
 
+    const summary = {};
     for (const record of records) {
         if (!attendanceStatuses.includes(record.status)) {
             throw new AppError('Invalid attendance status', 400);
         }
+        summary[record.status] = (summary[record.status] || 0) + 1;
 
         await Attendance.findOneAndUpdate(
             { session: sessionId, user: record.userId },
@@ -99,6 +101,8 @@ exports.markAttendance = async ({ sessionId, records, markedBy }) => {
             { upsert: true, runValidators: true }
         );
     }
+
+    return { recordsCount: records.length, summary };
 };
 
 exports.getTransferOptions = async (userId) => {
@@ -274,5 +278,10 @@ exports.processTransfer = async ({ transferId, status, adminId }) => {
     transfer.processedAt = new Date();
     await transfer.save();
 
-    return transfer;
+    return transfer.populate([
+        { path: 'user', select: 'name email' },
+        { path: 'targetClass', select: 'title level' },
+        { path: 'fromSession', populate: { path: 'class', select: 'title' } },
+        { path: 'toSession', populate: { path: 'class', select: 'title' } },
+    ]);
 };

@@ -36,8 +36,17 @@ exports.vnpayIpn = async (req, res) => {
 };
 
 exports.getMyPayments = catchAsync(async (req, res) => {
-    const payments = await paymentService.getMyPayments(req.user.id);
-    sendResponse(res, 200, 'Payments retrieved', { payments });
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+    const result = await paymentService.getMyPayments(req.user.id, { page, limit });
+    sendResponse(res, 200, 'Payments retrieved', result);
+});
+
+exports.getPaymentStatus = catchAsync(async (req, res) => {
+    const payment = await paymentService.getPaymentStatus(req.params.paymentId, req.user.id);
+    if (!payment) throw new AppError('Payment not found', 404);
+
+    sendResponse(res, 200, 'Payment status retrieved', { payment });
 });
 
 exports.getAdminPaymentHistory = catchAsync(async (req, res) => {

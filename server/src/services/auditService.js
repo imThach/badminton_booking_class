@@ -3,6 +3,8 @@ const Class = require('../models/Class');
 const User = require('../models/User');
 const Coach = require('../models/Coach');
 const Payment = require('../models/Payment');
+const ClassSession = require('../models/ClassSession');
+const SessionTransfer = require('../models/SessionTransfer');
 
 exports.writeAuditLog = async ({ req, action, targetType, targetId, changes, metadata }) => {
     const retentionDays = Number(process.env.AUDIT_LOG_RETENTION_DAYS || 365);
@@ -39,17 +41,21 @@ exports.listAuditLogs = async ({ page = 1, limit = 20, action, targetType }) => 
         grouped[log.targetType].push(log.targetId);
         return grouped;
     }, {});
-    const [classes, users, coaches, payments] = await Promise.all([
+    const [classes, users, coaches, payments, sessions, transfers] = await Promise.all([
         Class.find({ _id: { $in: idsByType.Class || [] } }).select('title').lean(),
         User.find({ _id: { $in: idsByType.User || [] } }).select('name email').lean(),
         Coach.find({ _id: { $in: idsByType.Coach || [] } }).select('name').lean(),
         Payment.find({ _id: { $in: idsByType.Payment || [] } }).select('txnRef').lean(),
+        ClassSession.find({ _id: { $in: idsByType.ClassSession || [] } }).select('startDate endDate class').populate('class', 'title').lean(),
+        SessionTransfer.find({ _id: { $in: idsByType.SessionTransfer || [] } }).select('user targetClass').populate('user', 'name email').populate('targetClass', 'title').lean(),
     ]);
     const names = new Map([
         ...classes.map((item) => [`Class:${item._id}`, item.title]),
         ...users.map((item) => [`User:${item._id}`, item.name || item.email]),
         ...coaches.map((item) => [`Coach:${item._id}`, item.name]),
         ...payments.map((item) => [`Payment:${item._id}`, item.txnRef]),
+        ...sessions.map((item) => [`ClassSession:${item._id}`, `${item.class?.title || 'Session'} - ${new Date(item.startDate).toLocaleString('en-US')}`]),
+        ...transfers.map((item) => [`SessionTransfer:${item._id}`, `${item.user?.name || item.user?.email || 'Student'} -> ${item.targetClass?.title || 'target class'}`]),
     ]);
     const fallbackName = (log) => log.metadata?.title
         || log.metadata?.name

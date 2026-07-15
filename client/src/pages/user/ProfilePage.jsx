@@ -45,11 +45,11 @@ export default function ProfilePage() {
         event.target.value = '';
         if (!file) return;
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-            toast.error('Please select a JPEG, PNG, or WebP image.');
+            toast.error(t('profile.avatarType'));
             return;
         }
         if (file.size > 3 * 1024 * 1024) {
-            toast.error('Avatar must be 3 MB or smaller.');
+            toast.error(t('profile.avatarSize'));
             return;
         }
         const previewUrl = URL.createObjectURL(file);
@@ -60,10 +60,10 @@ export default function ProfilePage() {
             queryClient.setQueryData(queryKeys.authUser, response);
             broadcastInvalidateQueries(queryKeys.authUser);
             setProfile(prev => ({ ...prev, avatar: response.data.user.avatar }));
-            toast.success('Avatar updated successfully.');
+            toast.success(t('profile.avatarUpdated'));
         } catch (error) {
             setProfile(prev => ({ ...prev, avatar: user?.avatar || '' }));
-            toast.error(error.response?.data?.message || 'Could not upload avatar.');
+            toast.error(error.response?.data?.message || t('profile.avatarUploadError'));
         } finally {
             URL.revokeObjectURL(previewUrl);
             setIsUploadingAvatar(false);
@@ -77,9 +77,9 @@ export default function ProfilePage() {
             queryClient.setQueryData(queryKeys.authUser, response);
             broadcastInvalidateQueries(queryKeys.authUser);
             setProfile(prev => ({ ...prev, avatar: '' }));
-            toast.success('Avatar removed.');
+            toast.success(t('profile.avatarRemoved'));
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Could not remove avatar.');
+            toast.error(error.response?.data?.message || t('profile.avatarRemoveError'));
         } finally {
             setIsUploadingAvatar(false);
         }
@@ -89,7 +89,7 @@ export default function ProfilePage() {
         e.preventDefault();
         const name = profile.name.trim();
         const phone = profile.phone.trim();
-        if (name.length < 2 || name.length > 100) return toast.error('Name must contain 2 to 100 characters.');
+        if (name.length < 2 || name.length > 100) return toast.error(t('profile.nameInvalid'));
         const phoneError = validatePhone(phone, t);
         if (phoneError) return toast.error(phoneError);
         setIsSubmitting(true);
@@ -98,9 +98,9 @@ export default function ProfilePage() {
             const updatedUser = await authApi.updateProfile(payload);
             queryClient.setQueryData(queryKeys.authUser, updatedUser);
             broadcastInvalidateQueries(queryKeys.authUser);
-            toast.success('Profile updated successfully.');
+            toast.success(t('profile.updated'));
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Could not update profile.');
+            toast.error(error.response?.data?.message || t('profile.updateError'));
         } finally {
             setIsSubmitting(false);
         }
@@ -109,18 +109,18 @@ export default function ProfilePage() {
     const handlePasswordSubmit = async (event) => {
         event.preventDefault();
         if (passwords.newPassword !== passwords.confirmPassword) {
-            toast.error('Password confirmation does not match.');
+            toast.error(t('profile.passwordMismatch'));
             return;
         }
-        if (passwords.newPassword.length < 8 || passwords.newPassword.length > 128) return toast.error('Password must contain 8 to 128 characters.');
-        if (passwords.currentPassword && passwords.currentPassword === passwords.newPassword) return toast.error('New password must be different from current password.');
+        if (passwords.newPassword.length < 8 || passwords.newPassword.length > 128) return toast.error(t('profile.passwordLength'));
+        if (passwords.currentPassword && passwords.currentPassword === passwords.newPassword) return toast.error(t('profile.passwordSame'));
         setIsSubmitting(true);
         try {
             await authApi.changePassword({ currentPassword: passwords.currentPassword, newPassword: passwords.newPassword });
-            toast.success(user?.hasLocalPassword ? 'Password changed. Please log in again.' : 'Password created. Please log in again.');
+            toast.success(user?.hasLocalPassword ? t('profile.passwordChanged') : t('profile.passwordCreated'));
             logout(undefined, { onSettled: () => navigate('/login', { replace: true }) });
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Could not update password.');
+            toast.error(error.response?.data?.message || t('profile.passwordUpdateError'));
         } finally {
             setIsSubmitting(false);
         }
@@ -135,8 +135,8 @@ export default function ProfilePage() {
             <main className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans">
                 <div className="max-w-5xl mx-auto">
                     <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-                        <p className="text-sm text-gray-500 mt-1">Manage your personal information and account preferences.</p>
+                        <h1 className="text-2xl font-bold text-gray-900">{t('profile.title')}</h1>
+                        <p className="text-sm text-gray-500 mt-1">{t('profile.subtitle')}</p>
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-6">
@@ -146,7 +146,7 @@ export default function ProfilePage() {
                                 <button className="relative mb-4 group cursor-pointer rounded-full disabled:cursor-wait" disabled={isUploadingAvatar} onClick={() => avatarInputRef.current?.click()} type="button">
                                     <img
                                         src={profile.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=random`}
-                                        alt="Profile Avatar"
+                                        alt={t('profile.avatarAlt')}
                                         className="w-28 h-28 rounded-full object-cover border-4 border-gray-50 shadow-sm transition-opacity group-hover:opacity-70"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
@@ -156,57 +156,57 @@ export default function ProfilePage() {
                                 </button>
 
                                 <h2 className="text-lg font-bold text-gray-900">{profile.name}</h2>
-                                <p className="text-sm text-gray-500">Member since {new Date(user?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
+                                <p className="text-sm text-gray-500">{t('profile.memberSince', { date: new Date(user?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) })}</p>
                             </div>
                         </div>
 
                         <div className="flex-1">
                             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
                                 <div className="mb-6 flex gap-sm border-b border-gray-200">
-                                    <button className={`border-b-2 px-4 py-3 text-sm font-bold ${activeTab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`} onClick={() => setActiveTab('profile')} type="button">Personal Information</button>
-                                    <button className={`border-b-2 px-4 py-3 text-sm font-bold ${activeTab === 'password' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`} onClick={() => setActiveTab('password')} type="button">{user?.hasLocalPassword ? 'Change Password' : 'Set Password'}</button>
+                                    <button className={`border-b-2 px-4 py-3 text-sm font-bold ${activeTab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`} onClick={() => setActiveTab('profile')} type="button">{t('profile.personalInfo')}</button>
+                                    <button className={`border-b-2 px-4 py-3 text-sm font-bold ${activeTab === 'password' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`} onClick={() => setActiveTab('password')} type="button">{user?.hasLocalPassword ? t('profile.changePasswordTab') : t('profile.setPasswordTab')}</button>
                                 </div>
                                 {activeTab === 'profile' ? (
                                 <form className="space-y-6" onSubmit={handleSubmit}>
                                     <div>
-                                        <label className={labelClass} htmlFor="name">Full Name</label>
+                                        <label className={labelClass} htmlFor="name">{t('profile.fullName')}</label>
                                         <input type="text" id="name" name="name" minLength="2" maxLength="100" required value={profile.name} onChange={handleInputChange} className={inputClass} />
                                     </div>
                                     <div>
-                                        <label className={labelClass} htmlFor="email">Email Address</label>
+                                        <label className={labelClass} htmlFor="email">{t('profile.email')}</label>
                                         <div className="relative">
                                             <input type="email" id="email" value={user?.email || ''} disabled className="w-full px-4 py-2.5 bg-gray-100/70 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed pr-10" />
                                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><Lock className="w-4 h-4 text-gray-400" /></div>
                                         </div>
-                                        <p className="mt-1.5 text-xs text-gray-500">Email cannot be changed manually. Contact support for updates.</p>
+                                        <p className="mt-1.5 text-xs text-gray-500">{t('profile.emailLocked')}</p>
                                     </div>
                                     <div>
-                                        <label className={labelClass} htmlFor="phone">Phone Number</label>
+                                        <label className={labelClass} htmlFor="phone">{t('profile.phone')}</label>
                                         <input type="tel" inputMode="tel" autoComplete="tel" id="phone" name="phone" maxLength="30" value={profile.phone} onChange={handleInputChange} className={inputClass} placeholder="+84 912 345 678" />
                                     </div>
                                     <hr className="border-gray-100" />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label className={labelClass} htmlFor="skillLevel">Skill Level</label>
-                                            <select id="skillLevel" name="skillLevel" value={profile.skillLevel} onChange={handleInputChange} className={inputClass}><option value="">Select skill level</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
+                                            <label className={labelClass} htmlFor="skillLevel">{t('profile.skillLevel')}</label>
+                                            <select id="skillLevel" name="skillLevel" value={profile.skillLevel} onChange={handleInputChange} className={inputClass}><option value="">{t('profile.selectSkill')}</option><option value="beginner">{t('common.beginner')}</option><option value="intermediate">{t('common.intermediate')}</option><option value="advanced">{t('common.advanced')}</option></select>
                                         </div>
                                         <div>
-                                            <label className={labelClass} htmlFor="preferredCourt">Preferred Court</label>
-                                            <select id="preferredCourt" name="preferredCourt" value={profile.preferredCourt} onChange={handleInputChange} className={inputClass}><option value="">Select preferred court</option>{profile.preferredCourt && !courtOptions.includes(profile.preferredCourt) && <option value={profile.preferredCourt}>{profile.preferredCourt}</option>}{courtOptions.map(court => <option key={court} value={court}>{court}</option>)}</select>
+                                            <label className={labelClass} htmlFor="preferredCourt">{t('profile.preferredCourt')}</label>
+                                            <select id="preferredCourt" name="preferredCourt" value={profile.preferredCourt} onChange={handleInputChange} className={inputClass}><option value="">{t('profile.selectCourt')}</option>{profile.preferredCourt && !courtOptions.includes(profile.preferredCourt) && <option value={profile.preferredCourt}>{profile.preferredCourt}</option>}{courtOptions.map(court => <option key={court} value={court}>{court}</option>)}</select>
                                         </div>
                                     </div>
                                     <div className="flex justify-end items-center gap-4 pt-4">
-                                        <Button type="button" variant="ghost" className="px-lg" onClick={() => window.history.back()}>Cancel</Button>
-                                        <Button type="submit" className="px-lg" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Changes'}</Button>
+                                        <Button type="button" variant="ghost" className="px-lg" onClick={() => window.history.back()}>{t('common.cancel')}</Button>
+                                        <Button type="submit" className="px-lg" disabled={isSubmitting}>{isSubmitting ? t('common.saving') : t('profile.saveChanges')}</Button>
                                     </div>
                                 </form>
                                 ) : (
                                     <form className="space-y-6" onSubmit={handlePasswordSubmit}>
-                                        <div><h2 className="text-lg font-bold text-gray-900">{user?.hasLocalPassword ? 'Change your password' : 'Create a password'}</h2><p className="mt-1 text-sm text-gray-500">Use at least 8 characters. You will need to log in again afterward.</p></div>
-                                        {user?.hasLocalPassword && <div><label className={labelClass} htmlFor="currentPassword">Current Password</label><input className={inputClass} id="currentPassword" minLength="8" maxLength="128" required type="password" value={passwords.currentPassword} onChange={event => setPasswords(current => ({ ...current, currentPassword: event.target.value }))} /></div>}
-                                        <div><label className={labelClass} htmlFor="newPassword">New Password</label><input className={inputClass} id="newPassword" minLength="8" maxLength="128" required type="password" value={passwords.newPassword} onChange={event => setPasswords(current => ({ ...current, newPassword: event.target.value }))} /></div>
-                                        <div><label className={labelClass} htmlFor="confirmPassword">Confirm New Password</label><input className={inputClass} id="confirmPassword" minLength="8" maxLength="128" required type="password" value={passwords.confirmPassword} onChange={event => setPasswords(current => ({ ...current, confirmPassword: event.target.value }))} /></div>
-                                        <div className="flex justify-end pt-4"><Button className="px-lg" disabled={isSubmitting} type="submit">{isSubmitting ? 'Saving...' : user?.hasLocalPassword ? 'Change Password' : 'Set Password'}</Button></div>
+                                        <div><h2 className="text-lg font-bold text-gray-900">{user?.hasLocalPassword ? t('profile.changePasswordTitle') : t('profile.createPasswordTitle')}</h2><p className="mt-1 text-sm text-gray-500">{t('profile.passwordHelp')}</p></div>
+                                        {user?.hasLocalPassword && <div><label className={labelClass} htmlFor="currentPassword">{t('profile.currentPassword')}</label><input className={inputClass} id="currentPassword" minLength="8" maxLength="128" required type="password" value={passwords.currentPassword} onChange={event => setPasswords(current => ({ ...current, currentPassword: event.target.value }))} /></div>}
+                                        <div><label className={labelClass} htmlFor="newPassword">{t('profile.newPassword')}</label><input className={inputClass} id="newPassword" minLength="8" maxLength="128" required type="password" value={passwords.newPassword} onChange={event => setPasswords(current => ({ ...current, newPassword: event.target.value }))} /></div>
+                                        <div><label className={labelClass} htmlFor="confirmPassword">{t('profile.confirmPassword')}</label><input className={inputClass} id="confirmPassword" minLength="8" maxLength="128" required type="password" value={passwords.confirmPassword} onChange={event => setPasswords(current => ({ ...current, confirmPassword: event.target.value }))} /></div>
+                                        <div className="flex justify-end pt-4"><Button className="px-lg" disabled={isSubmitting} type="submit">{isSubmitting ? t('common.saving') : user?.hasLocalPassword ? t('profile.changePasswordTab') : t('profile.setPasswordTab')}</Button></div>
                                     </form>
                                 )}
                             </div>

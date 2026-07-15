@@ -34,9 +34,22 @@ exports.create = (payload, userId) => Coach.create({ ...pick(payload), createdBy
 
 exports.update = async (id, payload) => {
     assertId(id);
-    const coach = await Coach.findByIdAndUpdate(id, pick(payload), { new: true, runValidators: true });
+    const updates = pick(payload);
+    const currentCoach = await Coach.findById(id);
+    if (!currentCoach) throw new AppError('Coach not found', 404);
+
+    const changes = Object.entries(updates).reduce((changedFields, [field, value]) => {
+        const currentValue = currentCoach[field];
+        if (String(currentValue ?? '') !== String(value ?? '')) {
+            changedFields[field] = { from: currentValue, to: value };
+        }
+        return changedFields;
+    }, {});
+
+    const coach = await Coach.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!coach) throw new AppError('Coach not found', 404);
     if (payload.name !== undefined) await Class.updateMany({ coach: coach._id }, { coachName: coach.name });
+    coach.$locals.auditChanges = changes;
     return coach;
 };
 

@@ -75,9 +75,11 @@ export const useCancelEnrollment = () => {
         },
         onSuccess: (response) => {
             const refundStatus = response?.data?.enrollment?.refundStatus;
-            toast.success(refundStatus === "refund_pending"
-                ? "Đã hủy lớp. Yêu cầu hoàn tiền đang chờ admin xử lý."
-                : "Đã hủy lớp. Giao dịch không đủ điều kiện hoàn tiền 24 giờ.");
+            toast.success(
+                refundStatus === "refund_pending"
+                    ? t("enrollment.cancelRefundPending")
+                    : t("enrollment.cancelNoRefund")
+            );
         },
         onError: (error, classId, context) => {
             if (error?.response?.status !== 404 && context?.previousMyEnrollments) {
@@ -86,12 +88,12 @@ export const useCancelEnrollment = () => {
 
             if (!isSessionError(error)) {
                 if (error?.response?.status === 404) {
-                    toast.error("This enrollment no longer exists.");
+                    toast.error(t("enrollment.notFound"));
                     applyCancelledEnrollment(classId);
                     return;
                 }
 
-                toast.error(getApiErrorMessage(error, "Failed to cancel enrollment."));
+                toast.error(getApiErrorMessage(error, t("enrollment.cancelError")));
             }
         },
         onSettled: (_data, _error, classId) => invalidateEnrollmentQueries(classId),

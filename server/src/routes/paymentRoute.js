@@ -20,6 +20,10 @@ router.patch('/admin/refunds/:paymentId', restrictTo('admin'), (req, res, next) 
     return next();
 }, paymentController.processRefund);
 router.get('/me', paymentController.getMyPayments);
+router.get('/:paymentId/status', (req, res, next) => {
+    if (!mongoose.isValidObjectId(req.params.paymentId)) return next(new AppError('Invalid payment id', 400));
+    return next();
+}, paymentController.getPaymentStatus);
 router.get('/:paymentId/invoice', paymentController.downloadInvoice);
 router.post('/vnpay/classes/:classId', restrictTo('user'), enrollmentValidator.validateClassIdParam, paymentController.createVnpayPayment);
 

@@ -4,6 +4,17 @@ const sendResponse = require('../utils/sendResponse');
 const auditService = require('../services/auditService');
 const sessionGenerator = require('../services/sessionGeneratorService');
 
+const buildClassCreatedChanges = (classDetail) => ({
+    level: classDetail.level,
+    coachName: classDetail.coachName,
+    schedule: classDetail.schedule,
+    location: classDetail.location,
+    startDate: classDetail.startDate,
+    endDate: classDetail.endDate,
+    maxStudents: classDetail.maxStudents,
+    price: classDetail.price,
+});
+
 exports.getAllClasses = catchAsync(async (req, res) => {
     const result = await classService.listClasses({
         level: req.query.level,
@@ -40,7 +51,7 @@ exports.createClass = catchAsync(async (req, res) => {
         payload: req.body,
         userId: req.user.id,
     });
-    await auditService.writeAuditLog({ req, action: 'CLASS_CREATED', targetType: 'Class', targetId: classDetail._id, metadata: { title: classDetail.title } });
+    await auditService.writeAuditLog({ req, action: 'CLASS_CREATED', targetType: 'Class', targetId: classDetail._id, changes: buildClassCreatedChanges(classDetail), metadata: { title: classDetail.title } });
     await sessionGenerator.generate(classDetail._id);
 
     sendResponse(res, 201, 'Class created successfully', {

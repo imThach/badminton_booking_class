@@ -22,6 +22,11 @@ const ALLOWED_CLASS_FIELDS = [
 const OCCUPYING_ENROLLMENT_STATUSES = ['active', 'pending_payment'];
 const occupyingStatusFilter = { $or: [{ status: { $in: OCCUPYING_ENROLLMENT_STATUSES } }, { status: { $exists: false } }] };
 const activeStatusFilter = { $or: [{ status: 'active' }, { status: { $exists: false } }] };
+const activeCoachPopulate = {
+    path: 'coach',
+    select: 'name photo bio isActive',
+    match: { isActive: true },
+};
 
 const assertValidObjectId = (id, message) => {
     if (!mongoose.isValidObjectId(id)) {
@@ -142,7 +147,7 @@ exports.listClasses = async ({ level, limit = 20, page = 1, searchTerm, upcoming
             .sort(sortMap[sort] || sortMap.date_asc)
             .skip(skip)
             .limit(limit)
-            .populate('createdBy', 'name email role').populate('coach', 'name photo bio isActive'),
+            .populate('createdBy', 'name email role').populate(activeCoachPopulate),
         Class.countDocuments(filter),
     ]);
 
@@ -160,7 +165,7 @@ exports.listClasses = async ({ level, limit = 20, page = 1, searchTerm, upcoming
 exports.getClassById = async (classId) => {
     assertValidObjectId(classId, 'Invalid class id');
 
-    const classDetail = await Class.findById(classId).populate('createdBy', 'name email role').populate('coach', 'name photo bio isActive');
+    const classDetail = await Class.findById(classId).populate('createdBy', 'name email role').populate(activeCoachPopulate);
     if (!classDetail) {
         throw new AppError('Class not found', 404);
     }
@@ -182,7 +187,7 @@ exports.createClass = async ({ payload, userId }) => {
         ...classPayload,
         createdBy: userId,
     });
-    const populatedClass = await Class.findById(newClass._id).populate('createdBy', 'name email role').populate('coach', 'name photo bio isActive');
+    const populatedClass = await Class.findById(newClass._id).populate('createdBy', 'name email role').populate(activeCoachPopulate);
 
     return addCurrentStudentsToClass(populatedClass);
 };
@@ -239,7 +244,7 @@ exports.updateClass = async ({ classId, payload }) => {
     const updatedClass = await Class.findByIdAndUpdate(classId, classPayload, {
         new: true,
         runValidators: true,
-    }).populate('createdBy', 'name email role').populate('coach', 'name photo bio isActive');
+    }).populate('createdBy', 'name email role').populate(activeCoachPopulate);
 
     return addCurrentStudentsToClass(updatedClass);
 };

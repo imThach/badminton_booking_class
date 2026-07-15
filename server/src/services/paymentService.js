@@ -156,9 +156,34 @@ exports.processResult = async (query) => {
     return payment;
 };
 
-exports.getMyPayments = (userId) => Payment.find({ user: userId })
-    .sort({ createdAt: -1 })
-    .populate('class', 'title coachName schedule startDate location price');
+exports.getMyPayments = async (userId, { page = 1, limit = 10 } = {}) => {
+    const filter = { user: userId };
+    const [payments, total] = await Promise.all([
+        Payment.find(filter)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .populate('class', 'title coachName schedule startDate location price'),
+        Payment.countDocuments(filter),
+    ]);
+
+    return {
+        payments,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.max(Math.ceil(total / limit), 1),
+        },
+    };
+};
+
+exports.getPaymentStatus = (paymentId, userId) => Payment.findOne({
+    _id: paymentId,
+    user: userId,
+})
+    .select('status paidAt invoiceNumber createdAt updatedAt')
+    .lean();
 
 exports.getAdminPaymentHistory = async ({ page = 1, limit = 20, status }) => {
     const filter = status ? { status } : {};

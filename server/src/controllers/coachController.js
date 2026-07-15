@@ -18,18 +18,29 @@ exports.list = catchAsync(async (req, res) => {
 
 exports.create = catchAsync(async (req, res) => {
     const coach = await coachService.create(req.body, req.user.id);
-    await auditService.writeAuditLog({ req, action: 'COACH_CREATED', targetType: 'Coach', targetId: coach._id, metadata: { name: coach.name } });
+    await auditService.writeAuditLog({
+        req,
+        action: 'COACH_CREATED',
+        targetType: 'Coach',
+        targetId: coach._id,
+        changes: {
+            photo: Boolean(coach.photo),
+            bio: Boolean(coach.bio),
+            isActive: coach.isActive,
+        },
+        metadata: { name: coach.name },
+    });
     sendResponse(res, 201, 'Coach created successfully', { coach });
 });
 
 exports.update = catchAsync(async (req, res) => {
     const coach = await coachService.update(req.params.id, req.body);
-    await auditService.writeAuditLog({ req, action: 'COACH_UPDATED', targetType: 'Coach', targetId: coach._id, metadata: { name: coach.name } });
+    await auditService.writeAuditLog({ req, action: 'COACH_UPDATED', targetType: 'Coach', targetId: coach._id, changes: coach.$locals.auditChanges, metadata: { name: coach.name } });
     sendResponse(res, 200, 'Coach updated successfully', { coach });
 });
 
 exports.remove = catchAsync(async (req, res) => {
     const coach = await coachService.remove(req.params.id);
-    await auditService.writeAuditLog({ req, action: 'COACH_DELETED', targetType: 'Coach', targetId: coach._id, metadata: { name: coach.name } });
+    await auditService.writeAuditLog({ req, action: 'COACH_DELETED', targetType: 'Coach', targetId: coach._id, changes: { wasActive: coach.isActive }, metadata: { name: coach.name } });
     res.status(204).end();
 });

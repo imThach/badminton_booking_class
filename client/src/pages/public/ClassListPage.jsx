@@ -61,9 +61,7 @@ export default function ClassListPage() {
     const { data: classesResponse, isLoading, isError } = useQuery({
         queryKey: queryKeys.classes.list(classFilters),
         queryFn: () => classesApi.list(classFilters),
-        staleTime: 5000,
-        refetchInterval: 5000,
-        refetchIntervalInBackground: true,
+        staleTime: 60_000,
     });
 
     const classesList = classesResponse?.data?.classes || [];

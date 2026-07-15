@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CircleCheck, CircleX, Clock } from 'lucide-react';
 import Header from '../../components/layout/Header.jsx';
 import Footer from '../../components/layout/Footer.jsx';
@@ -13,8 +13,21 @@ export default function PaymentResultPage() {
   const [params] = useSearchParams();
   const status = params.get('status');
   const paymentId = params.get('paymentId');
-  const paid = status === 'paid';
-  const pending = status === 'pending';
+  const shouldVerifyPayment = Boolean(paymentId);
+  const {
+    data: paymentStatusResponse,
+    isLoading: isVerifyingPayment,
+    isError: isPaymentStatusError,
+  } = useQuery({
+    queryKey: ['payment-status', paymentId],
+    queryFn: () => paymentApi.getPaymentStatus(paymentId),
+    enabled: shouldVerifyPayment,
+    retry: false,
+    staleTime: 30_000,
+  });
+  const verifiedStatus = paymentStatusResponse?.data?.payment?.status;
+  const paid = verifiedStatus === 'paid';
+  const pending = shouldVerifyPayment && !isPaymentStatusError && (isVerifyingPayment || verifiedStatus === 'pending');
   const Icon = paid ? CircleCheck : pending ? Clock : CircleX;
 
   useEffect(() => {
