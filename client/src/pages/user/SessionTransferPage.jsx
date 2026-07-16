@@ -72,19 +72,19 @@ export default function SessionTransferPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <Header />
       <main className="mx-auto max-w-3xl space-y-xl px-lg py-xl">
         <div>
           <h1 className="text-headline-lg font-bold">{t('transfer.title')}</h1>
           <p className="text-on-surface-variant">{t('transfer.subtitle')}</p>
         </div>
-        <form className="space-y-md rounded-xl border bg-white p-lg" onSubmit={submit}>
+        <form className="space-y-md rounded-xl border border-outline-variant bg-white p-lg" onSubmit={submit}>
           <label className="block font-semibold">
             {t('transfer.source')}
             <select
               required
-              className="mt-xs w-full rounded-lg border p-sm"
+              className="mt-xs w-full rounded-lg border border-outline-variant p-sm"
               value={form.fromSession}
               onChange={event =>
                 setForm({ ...form, fromSession: event.target.value, targetKey: '' })
@@ -103,7 +103,7 @@ export default function SessionTransferPage() {
             <select
               required
               disabled={!selectedSource}
-              className="mt-xs w-full rounded-lg border p-sm disabled:bg-surface-container"
+              className="mt-xs w-full rounded-lg border border-outline-variant p-sm disabled:bg-surface-container"
               value={form.targetKey}
               onChange={event => setForm({ ...form, targetKey: event.target.value })}
             >
@@ -122,7 +122,7 @@ export default function SessionTransferPage() {
             required
             minLength="10"
             maxLength="500"
-            className="min-h-24 w-full rounded-lg border p-sm"
+            className="min-h-24 w-full rounded-lg border border-outline-variant p-sm"
             placeholder={t('transfer.reason')}
             value={form.reason}
             onChange={event => setForm({ ...form, reason: event.target.value })}
@@ -134,10 +134,10 @@ export default function SessionTransferPage() {
             {t('transfer.submit')}
           </button>
         </form>
-        <section className="rounded-xl border bg-white p-lg">
+        <section className="rounded-xl border border-outline-variant bg-white p-lg">
           <h2 className="mb-md font-bold">{t('transfer.history')}</h2>
           {(transfers.data?.data?.transfers || []).map(item => (
-            <p className="border-t py-sm" key={item._id}>
+            <p className="border-t border-outline-variant py-sm" key={item._id}>
               {item.fromSession?.class?.title} →{' '}
               {item.targetClass?.title || item.toSession?.class?.title}:{' '}
               <strong>{t(`attendance.status.${item.status}`)}</strong>

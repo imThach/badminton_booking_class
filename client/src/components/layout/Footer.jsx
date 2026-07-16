@@ -5,15 +5,12 @@ export default function Footer() {
     const { t } = useI18n();
 
     return (
-        <footer className="w-full  mt-xl">
+        <footer className="w-full mt-xl bg-surface-container pt-xl">
             <div className="max-w-container-max mx-auto mb-lg px-lg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
                 <div className="lg:col-span-1">
                     <span className="text-headline-md font-black text-primary mb-4 block">
                         SmashCourts
                     </span>
-                    <p className="text-on-surface-variant text-body-md max-w-xs">
-                        {t('footer.slogan')}
-                    </p>
                     <div className="flex gap-4 mt-6">
                         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">
                             <Globe size={20} />

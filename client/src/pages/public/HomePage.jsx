@@ -4,7 +4,7 @@ import ClassListPage from "./ClassListPage.jsx";
 
 export default function HomePage() {
     return (
-        <div className="flex flex-col min-h-screen bg-background">
+        <div className="flex flex-col min-h-screen bg-white">
             <Header />
             <main className="flex-grow">
                 <ClassListPage />
