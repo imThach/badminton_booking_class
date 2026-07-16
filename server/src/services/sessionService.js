@@ -19,9 +19,21 @@ const assertValidObjectId = (value, message = 'Invalid id') => {
 
 const parseDate = (value) => new Date(value);
 
-exports.listSessions = async (classId) => {
+exports.listSessions = async ({ classId, page = 1, limit = 20 }) => {
     assertValidObjectId(classId);
-    return Session.find({ class: classId }).sort('startDate');
+    const filter = { class: classId };
+    const [sessions, total] = await Promise.all([
+        Session.find(filter)
+            .sort('startDate')
+            .skip((page - 1) * limit)
+            .limit(limit),
+        Session.countDocuments(filter),
+    ]);
+
+    return {
+        sessions,
+        pagination: { page, limit, total, totalPages: Math.max(Math.ceil(total / limit), 1) },
+    };
 };
 
 exports.generateSessions = (classId) => generator.generate(classId);
@@ -213,12 +225,25 @@ exports.requestTransfer = async ({ userId, payload }) => {
     });
 };
 
-exports.listTransfers = (user) => Transfer.find(user.role === 'admin' ? {} : { user: user.id })
-    .sort('-createdAt')
-    .populate('user', 'name email')
-    .populate('targetClass', 'title level')
-    .populate({ path: 'fromSession', populate: { path: 'class', select: 'title' } })
-    .populate({ path: 'toSession', populate: { path: 'class', select: 'title' } });
+exports.listTransfers = async ({ user, page = 1, limit = 20 }) => {
+    const filter = user.role === 'admin' ? {} : { user: user.id };
+    const [transfers, total] = await Promise.all([
+        Transfer.find(filter)
+            .sort('-createdAt')
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .populate('user', 'name email')
+            .populate('targetClass', 'title level')
+            .populate({ path: 'fromSession', populate: { path: 'class', select: 'title' } })
+            .populate({ path: 'toSession', populate: { path: 'class', select: 'title' } }),
+        Transfer.countDocuments(filter),
+    ]);
+
+    return {
+        transfers,
+        pagination: { page, limit, total, totalPages: Math.max(Math.ceil(total / limit), 1) },
+    };
+};
 
 exports.processTransfer = async ({ transferId, status, adminId }) => {
     assertValidObjectId(transferId);

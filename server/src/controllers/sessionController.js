@@ -4,10 +4,17 @@ const send = require('../utils/sendResponse');
 const auditService = require('../services/auditService');
 
 const sessionTitle = (session) => `${new Date(session.startDate).toISOString()} - ${new Date(session.endDate).toISOString()}`;
+const parsePagination = (query = {}, defaultLimit = 20, maxLimit = 100) => ({
+    page: Math.max(Math.floor(Number(query.page) || 1), 1),
+    limit: Math.min(Math.max(Math.floor(Number(query.limit) || defaultLimit), 1), maxLimit),
+});
 
 exports.list = catchAsync(async (req, res) => {
-    const sessions = await sessionService.listSessions(req.params.classId);
-    send(res, 200, 'Sessions retrieved', { sessions });
+    const result = await sessionService.listSessions({
+        classId: req.params.classId,
+        ...parsePagination(req.query),
+    });
+    send(res, 200, 'Sessions retrieved', result);
 });
 
 exports.generate = catchAsync(async (req, res) => {
@@ -86,8 +93,11 @@ exports.requestTransfer = catchAsync(async (req, res) => {
 });
 
 exports.transfers = catchAsync(async (req, res) => {
-    const transfers = await sessionService.listTransfers(req.user);
-    send(res, 200, 'Transfers retrieved', { transfers });
+    const result = await sessionService.listTransfers({
+        user: req.user,
+        ...parsePagination(req.query),
+    });
+    send(res, 200, 'Transfers retrieved', result);
 });
 
 exports.process = catchAsync(async (req, res) => {

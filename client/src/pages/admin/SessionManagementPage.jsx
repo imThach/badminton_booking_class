@@ -20,11 +20,16 @@ import { broadcastInvalidateQueries } from '../../api/broadcastQueryClient.js';
 import { queryKeys } from '../../api/queryKeys.js';
 import { useI18n } from '../../i18n/I18nProvider.jsx';
 
+const SESSION_PAGE_SIZE = 12;
+const TRANSFER_PAGE_SIZE = 10;
+
 export default function SessionManagementPage() {
   const { language, t } = useI18n();
   const queryClient = useQueryClient();
   const [classId, setClassId] = useState('');
   const [selected, setSelected] = useState('');
+  const [sessionPage, setSessionPage] = useState(1);
+  const [transferPage, setTransferPage] = useState(1);
   const [manual, setManual] = useState({ date: '', start: '', end: '' });
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
 
@@ -34,8 +39,8 @@ export default function SessionManagementPage() {
   });
 
   const sessions = useQuery({
-    queryKey: queryKeys.sessions(classId),
-    queryFn: () => sessionApi.list(classId),
+    queryKey: [...queryKeys.sessions(classId), { page: sessionPage, limit: SESSION_PAGE_SIZE }],
+    queryFn: () => sessionApi.list(classId, { page: sessionPage, limit: SESSION_PAGE_SIZE }),
     enabled: !!classId,
   });
 
@@ -46,8 +51,8 @@ export default function SessionManagementPage() {
   });
 
   const transfers = useQuery({
-    queryKey: queryKeys.sessionTransfers,
-    queryFn: sessionApi.transfers,
+    queryKey: [...queryKeys.sessionTransfers, { page: transferPage, limit: TRANSFER_PAGE_SIZE }],
+    queryFn: () => sessionApi.transfers({ page: transferPage, limit: TRANSFER_PAGE_SIZE }),
   });
 
   const refresh = () => {
@@ -108,6 +113,10 @@ export default function SessionManagementPage() {
   });
 
   const students = roster.data?.data?.students || [];
+  const sessionItems = sessions.data?.data?.sessions || [];
+  const sessionPagination = sessions.data?.data?.pagination || { page: sessionPage, totalPages: 1, total: sessionItems.length };
+  const transferItems = transfers.data?.data?.transfers || [];
+  const transferPagination = transfers.data?.data?.pagination || { page: transferPage, totalPages: 1, total: transferItems.length };
   const attended = students.filter((item) =>
     ['present', 'late'].includes(item.attendance?.status)
   ).length;
@@ -149,6 +158,7 @@ export default function SessionManagementPage() {
             onChange={(event) => {
               setClassId(event.target.value);
               setSelected('');
+              setSessionPage(1);
             }}
           >
             <option value="">{t('attendance.selectClass')}</option>
@@ -228,7 +238,7 @@ export default function SessionManagementPage() {
               </div>
 
               <div className="mt-lg grid gap-sm sm:grid-cols-2 lg:grid-cols-3">
-                {(sessions.data?.data?.sessions || []).map((item) => (
+                {sessionItems.map((item) => (
                   <button
                     onClick={() => setSelected(item._id)}
                     className={`rounded-xl border p-md text-left ${
@@ -245,6 +255,36 @@ export default function SessionManagementPage() {
                   </button>
                 ))}
               </div>
+
+              {sessionPagination.totalPages > 1 && (
+                <div className="mt-md flex justify-center gap-sm">
+                  <button
+                    className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+                    disabled={sessionPagination.page <= 1}
+                    onClick={() => {
+                      setSelected('');
+                      setSessionPage((value) => Math.max(value - 1, 1));
+                    }}
+                    type="button"
+                  >
+                    {t('classes.previous')}
+                  </button>
+                  <span className="px-md py-sm font-semibold">
+                    {sessionPagination.page} / {sessionPagination.totalPages}
+                  </span>
+                  <button
+                    className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+                    disabled={sessionPagination.page >= sessionPagination.totalPages}
+                    onClick={() => {
+                      setSelected('');
+                      setSessionPage((value) => Math.min(value + 1, sessionPagination.totalPages));
+                    }}
+                    type="button"
+                  >
+                    {t('classes.next')}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </section>
@@ -341,7 +381,7 @@ export default function SessionManagementPage() {
             </div>
 
             <span className="rounded-full bg-surface-container px-sm py-xs text-label-sm font-bold">
-              {transfers.data?.data?.transfers?.length || 0}
+              {transferPagination.total}
             </span>
           </div>
 
@@ -350,7 +390,7 @@ export default function SessionManagementPage() {
           )}
 
           <div className="grid gap-md lg:grid-cols-2">
-            {(transfers.data?.data?.transfers || []).map((item) => (
+            {transferItems.map((item) => (
               <article
                 className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
                 key={item._id}
@@ -458,11 +498,35 @@ export default function SessionManagementPage() {
           </div>
 
           {!transfers.isLoading &&
-            !(transfers.data?.data?.transfers || []).length && (
+            !transferItems.length && (
               <div className="rounded-xl border border-dashed border-outline-variant p-xl text-center text-on-surface-variant">
                 {t('attendance.noTransferRequests')}
               </div>
             )}
+
+          {transferPagination.totalPages > 1 && (
+            <div className="mt-lg flex justify-center gap-sm">
+              <button
+                className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+                disabled={transferPagination.page <= 1}
+                onClick={() => setTransferPage((value) => Math.max(value - 1, 1))}
+                type="button"
+              >
+                {t('classes.previous')}
+              </button>
+              <span className="px-md py-sm font-semibold">
+                {transferPagination.page} / {transferPagination.totalPages}
+              </span>
+              <button
+                className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+                disabled={transferPagination.page >= transferPagination.totalPages}
+                onClick={() => setTransferPage((value) => Math.min(value + 1, transferPagination.totalPages))}
+                type="button"
+              >
+                {t('classes.next')}
+              </button>
+            </div>
+          )}
         </section>
       </main>
       <Footer />

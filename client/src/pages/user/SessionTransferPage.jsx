@@ -20,7 +20,7 @@ export default function SessionTransferPage() {
 
   const transfers = useQuery({
     queryKey: queryKeys.myTransfers,
-    queryFn: sessionApi.transfers,
+    queryFn: () => sessionApi.transfers({ limit: 100 }),
   });
 
   const sources = options.data?.data?.sources || [];

@@ -57,6 +57,7 @@ const toClassForm = (classItem) => ({
 });
 
 const CLASS_FORM_FIELDS = Object.keys(initialClassForm);
+const ADMIN_CLASS_PAGE_SIZE = 20;
 
 const buildChangedClassPayload = (nextForm, originalForm) =>
     CLASS_FORM_FIELDS.reduce((payload, field) => {
@@ -78,10 +79,11 @@ export default function ClassManagement() {
     const [classFormErrors, setClassFormErrors] = useState({});
     const [confirm, setConfirm] = useState(null);
     const [activeTab, setActiveTab] = useState("classes");
+    const [classPage, setClassPage] = useState(1);
 
     const { data, isError, isLoading } = useQuery({
-        queryKey: queryKeys.admin.classes,
-        queryFn: () => classesApi.list(),
+        queryKey: [...queryKeys.admin.classes, { page: classPage, limit: ADMIN_CLASS_PAGE_SIZE }],
+        queryFn: () => classesApi.list({ page: classPage, limit: ADMIN_CLASS_PAGE_SIZE }),
     });
 
     const { data: coachesData, isLoading: isCoachesLoading } = useQuery({
@@ -191,8 +193,8 @@ export default function ClassManagement() {
                 if (error.response?.status === 409 || error.response?.status === 400) {
                     try {
                         const refreshed = await queryClient.fetchQuery({
-                            queryKey: queryKeys.admin.classes,
-                            queryFn: () => classesApi.list(),
+                            queryKey: [...queryKeys.admin.classes, { page: classPage, limit: ADMIN_CLASS_PAGE_SIZE }],
+                            queryFn: () => classesApi.list({ page: classPage, limit: ADMIN_CLASS_PAGE_SIZE }),
                         });
                         const editingClassId = editingClass?._id || editingClass?.id;
                         const refreshedClass = refreshed?.data?.classes?.find((classItem) => {
@@ -257,6 +259,7 @@ export default function ClassManagement() {
     });
 
     const classes = data?.data?.classes || [];
+    const classPagination = data?.data?.pagination || { page: classPage, totalPages: 1, total: classes.length };
     const coaches = coachesData?.data?.coaches || [];
     const students = studentsData?.data?.students || [];
 
@@ -415,6 +418,29 @@ export default function ClassManagement() {
                             onEdit={handleEditClass}
                             onViewStudents={setStudentsClass}
                         />
+                        {classPagination.totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-sm border-t border-outline-variant bg-surface-container-lowest p-md">
+                                <button
+                                    className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+                                    disabled={classPagination.page <= 1}
+                                    onClick={() => setClassPage((value) => Math.max(value - 1, 1))}
+                                    type="button"
+                                >
+                                    {t("classes.previous")}
+                                </button>
+                                <span className="px-md py-sm font-semibold">
+                                    {classPagination.page} / {classPagination.totalPages}
+                                </span>
+                                <button
+                                    className="rounded-lg border border-outline-variant px-md py-sm font-semibold disabled:opacity-40"
+                                    disabled={classPagination.page >= classPagination.totalPages}
+                                    onClick={() => setClassPage((value) => Math.min(value + 1, classPagination.totalPages))}
+                                    type="button"
+                                >
+                                    {t("classes.next")}
+                                </button>
+                            </div>
+                        )}
                     </div> : <CoachManagement coaches={coaches} isLoading={isCoachesLoading} isSaving={saveCoachMutation.isPending} onSave={(id, payload) => saveCoachMutation.mutateAsync({ id, payload })} onDelete={handleDeleteCoach} />}
                 </section>
             </main>
